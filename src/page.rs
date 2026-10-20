@@ -16,6 +16,7 @@ use crate::model::{InteractionEvent, Stroke};
 const KEEP_MS: u64 = 180_000;
 const MAX_EVENTS_PER_TAB: usize = 300;
 const MAX_TABS: usize = 16;
+const MAX_ANNOTATIONS: usize = 300;
 const MAX_TEXT: usize = 60;
 const MAX_MESSAGE: usize = 160;
 
@@ -97,8 +98,21 @@ pub struct Selection {
     pub selector_path: Vec<String>,
     pub rect_viewport: [f64; 4],
     pub scroll: [f64; 2],
+    #[serde(default)]
+    pub frame_id: Option<u32>,
+    #[serde(default)]
+    pub frame_path: Option<Vec<Frame>>,
     pub attributes: std::collections::BTreeMap<String, String>,
     pub styles: std::collections::BTreeMap<String, String>,
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Frame {
+    pub url: String,
+    pub selector_path: Vec<String>,
+    pub rect_viewport: [f64; 4],
+    pub scroll: [f64; 2],
 }
 
 #[derive(Debug, Default, Deserialize)]
@@ -222,6 +236,9 @@ pub struct Log {
 
 impl Log {
     pub fn begin_capture(&mut self, now: u64) {
+        for tab in &mut self.tabs {
+            tab.events.retain(|event| event.kind != "annotation");
+        }
         self.capture_start = Some(now);
     }
     pub fn record(&mut self, origin: &str, post: Post, now: u64) -> usize {
@@ -237,9 +254,21 @@ impl Log {
                 self.tabs.len() - 1
             }
         };
+        let mut annotations = self
+            .tabs
+            .iter()
+            .flat_map(|tab| &tab.events)
+            .filter(|event| event.kind == "annotation")
+            .count();
         let tab = &mut self.tabs[index];
         for event in post.events.into_iter().take(64) {
             if let Some(event) = sanitize(event, now) {
+                if event.kind == "annotation" {
+                    if annotations >= MAX_ANNOTATIONS {
+                        continue;
+                    }
+                    annotations += 1;
+                }
                 tab.events.push_back(event);
                 accepted += 1;
             }
@@ -267,7 +296,17 @@ impl Log {
         if self.tabs.len() > MAX_TABS {
             self.tabs
                 .sort_by_key(|t| std::cmp::Reverse(t.events.back().map_or(0, |e| e.t)));
-            self.tabs.truncate(MAX_TABS);
+            let mut telemetry_tabs = 0;
+            self.tabs.retain(|tab| {
+                if tab.events.iter().any(|event| {
+                    self.capture_start
+                        .is_some_and(|start| event.kind == "annotation" && event.t >= start)
+                }) {
+                    return true;
+                }
+                telemetry_tabs += 1;
+                telemetry_tabs <= MAX_TABS
+            });
         }
         accepted
     }
@@ -303,6 +342,12 @@ pub fn begin_capture() {
     LOG.lock()
         .unwrap_or_else(std::sync::PoisonError::into_inner)
         .begin_capture(crate::now_epoch_ms());
+}
+
+pub fn end_capture() {
+    LOG.lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
+        .capture_start = None;
 }
 
 pub fn finish_annotations(from: u64, to: u64) -> Vec<Event> {
@@ -491,9 +536,20 @@ mod tests {
         let mut log = super::Log::default();
         log.begin_capture(1000);
         for frame in 0..17 {
-            log.record("browser", super::Post { tab:frame.to_string(), events:vec![annotation(1000)] }, 1000);
+            log.record(
+                "browser",
+                super::Post {
+                    tab: frame.to_string(),
+                    events: vec![annotation(1000)],
+                },
+                1000,
+            );
         }
-        assert_eq!(log.between(1000,1000).len(),17,"every acknowledged frame annotation survives");
+        assert_eq!(
+            log.between(1000, 1000).len(),
+            17,
+            "every acknowledged frame annotation survives"
+        );
     }
 
     #[test]
@@ -502,13 +558,37 @@ mod tests {
         log.begin_capture(1000);
         let mut accepted = 0;
         for t in 1000..1400 {
-            accepted += log.record("browser", super::Post { tab:"one".into(), events:vec![annotation(t)] },t);
+            accepted += log.record(
+                "browser",
+                super::Post {
+                    tab: "one".into(),
+                    events: vec![annotation(t)],
+                },
+                t,
+            );
         }
-        assert_eq!(accepted,300,"overflow is rejected rather than acknowledged");
-        assert_eq!(log.between(1000,1400).len(),300,"acknowledged annotations remain bounded");
+        assert_eq!(
+            accepted, 300,
+            "overflow is rejected rather than acknowledged"
+        );
+        assert_eq!(
+            log.between(1000, 1400).len(),
+            300,
+            "acknowledged annotations remain bounded"
+        );
         log.capture_start = None;
-        log.record("browser",super::Post {tab:"one".into(),events:vec![]},400000);
-        assert!(log.between(0,400000).is_empty(),"ended capture releases expired annotations");
+        log.record(
+            "browser",
+            super::Post {
+                tab: "one".into(),
+                events: vec![],
+            },
+            400000,
+        );
+        assert!(
+            log.between(0, 400000).is_empty(),
+            "ended capture releases expired annotations"
+        );
     }
 
     #[test]

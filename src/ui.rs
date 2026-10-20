@@ -1426,6 +1426,7 @@ impl ScrawlCoordinator {
     fn discard_recording(&mut self) -> Option<(TargetInfo, Option<LaserOverlay>)> {
         set_escape_hotkey_enabled(false);
         let rec = self.active_recording.take()?;
+        crate::page::end_capture();
         let _ = self.telemetry.finish_session();
         match rec.source {
             CaptureSource::Screen { session, audio, .. } => {
@@ -1986,7 +1987,11 @@ impl ScrawlCoordinator {
         }
     }
 
-    fn apply_pill_action(&mut self, action: crate::native::pill::PillAction, cx: &mut Context<Self>) {
+    fn apply_pill_action(
+        &mut self,
+        action: crate::native::pill::PillAction,
+        cx: &mut Context<Self>,
+    ) {
         use crate::native::pill::PillAction;
         match action {
             PillAction::SelectMode(mode) => self.click_selection_mode(mode, cx),
@@ -2270,10 +2275,7 @@ impl ScrawlCoordinator {
                 .native_pill
                 .as_ref()
                 .map_or_else(pointer_on_hud_pill, |p| p.pointer_on_pill());
-            if self
-                .reveal
-                .tick(reveal_clock_ms(), on_pill, activity)
-            {
+            if self.reveal.tick(reveal_clock_ms(), on_pill, activity) {
                 self.play_fold();
             }
         }
@@ -2725,6 +2727,7 @@ impl ScrawlCoordinator {
             match PhoneSession::start(&movie_path, dev_id, Some(Arc::clone(&self.telemetry))) {
                 Ok(session) => session,
                 Err(error) => {
+                    crate::page::end_capture();
                     scrawl_log(format!("iPhone capture could not start: {error:#}"));
                     self.telemetry.finish_session();
                     let _ = std::fs::remove_dir_all(&bundle_dir);
@@ -2855,6 +2858,7 @@ impl ScrawlCoordinator {
                             windows,
                         } => (session, audio, windows),
                         CaptureSource::Phone(session) => {
+                            crate::page::end_capture();
                             let finalized = session.stop().and_then(|recording| {
                                 crate::phone::finalize_live_capture(
                                     &bundle_dir,
@@ -2898,7 +2902,10 @@ impl ScrawlCoordinator {
                     activity.stop_started = Some(stop_started);
                     activity.stop_ms = Some(stop_started.elapsed().as_millis() as u64);
                     let duration_ms = recording.duration_ms;
-                    let browser = crate::browser::capture(capture_end_ms.saturating_sub(duration_ms), capture_end_ms);
+                    let browser = crate::browser::capture(
+                        capture_end_ms.saturating_sub(duration_ms),
+                        capture_end_ms,
+                    );
                     let mut finalized = crate::finalize_capture_bundle(
                         &bundle_dir,
                         target,
@@ -5321,7 +5328,8 @@ pub fn run_app(
         scrawl_log(format!("run_app started pid={}", std::process::id()));
         platform::keep_alive(cx);
         // ⌘W, Esc, the close button or Scrawl itself: every way a window closes ends up here.
-        cx.on_window_closed(|cx| cx.defer(platform::hand_back_keys)).detach();
+        cx.on_window_closed(|cx| cx.defer(platform::hand_back_keys))
+            .detach();
         let (ui_sender, ui_receiver) = flume::unbounded();
         crate::phone::start_ingest_server(ui_sender.clone());
         let telemetry = SharedCaptureTelemetry::new(ui_sender);

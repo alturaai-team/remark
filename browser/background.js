@@ -23,6 +23,7 @@ chrome.runtime.onMessage.addListener((message,sender,reply) => {
     if (!window.focused || !tab.active) throw new Error("Zavihek ni aktiven");
     const url = new URL(sender.url);
     message.selection.url = url.origin + url.pathname;
+    message.selection.frameId = sender.frameId;
     const body = {tab:String(sender.tab.id)+":"+sender.frameId,events:[{
       t:message.t,kind:"annotation",focused:true,target:message.target,selection:message.selection
     }]};

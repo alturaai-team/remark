@@ -35,6 +35,10 @@
     const {selection,...target} = described;
     selection.id = crypto.randomUUID();
     selection.number = ++count;
+    if (markers.size === 300) {
+      const oldest = markers.keys().next().value;
+      markers.get(oldest).marker.remove();markers.delete(oldest);
+    }
     const marker = document.createElement("div");
     const [x,y] = selection.rectViewport;
     marker.textContent = String(selection.number);
@@ -45,6 +49,10 @@
   };
   const toggle = () => {
     enabled = !enabled;
+    if (enabled) {
+      for (const {marker} of markers.values()) marker.remove();
+      markers.clear();count=0;
+    }
     if (!enabled) hover.style.display = "none";
     if (enabled) document.documentElement.style.setProperty("cursor","crosshair");
     else document.documentElement.style.removeProperty("cursor");
@@ -61,8 +69,9 @@
   });
   const update = () => {
     hover.style.display="none";
-    for (const {element,marker} of markers.values()) {
-      marker.style.display=element.isConnected ? "block" : "none";
+    for (const [id,{element,marker}] of markers) {
+      if (!element.isConnected) {marker.remove();markers.delete(id);continue;}
+      marker.style.display="block";
       const rect=element.getBoundingClientRect();
       Object.assign(marker.style,{left:rect.x+"px",top:rect.y+"px"});
     }

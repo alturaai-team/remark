@@ -8,6 +8,8 @@ Osebni fork Scrawla 0.3.6: zaslon, govor prek Spokenly in lasten izbirnik spletn
 - Segmentni časi ostanejo merjeni; časov posameznih besed ne izmišljuje. Končni čas segmenta se omeji na dolžino WAV: pri preverjanju je Spokenly za 3816 ms zvoka vrnil 3836 ms.
 - Razširitev na že odprti strani izbere element in zajame selector, viewport pravokotnik, pomik, identifikatorje, CSS in razpoložljivo React komponento/izvor. To so podatki strani, brez spreminjanja projektne kode.
 - Selector čez odprti shadow root je seznam poti, po ena na root. Koordinate so CSS piksli okvirja strani; niso predstavljene kot piksli posnetka zaslona.
+- Vsak okvir ohrani svoj ID in URL; dostopni nadrejeni iframe-i tudi selector, pravokotnik in pomik. Pri okvirjih drugega izvora, katerih nadrejeni DOM ni dostopen, je pot eksplicitno manjkajoča.
+- Zajem sprejme največ 300 pripomb; presežek je zavrnjen z istim indikatorjem neuspeha. Nov vklop izbirnika počisti stare vizualne markerje.
 - Shranjene pripombe vsebujejo čas, URL, selector in metapodatke. Časovne zastavice dajo oznakam prednost pri izboru slik. Prepis in slike so povezani v povzetku.
 - Polja obrazcev in gesla se ne berejo. URL ne vsebuje query parametrov.
 - Pri napaki Spokenly je posnetek shranjen; ponudnik se ne zamenja. Neuspešno pošiljanje spletne oznake pokaže `!`.

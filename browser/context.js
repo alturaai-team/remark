@@ -97,6 +97,21 @@
       }
       return {};
     };
+    const framePath = () => {
+      const frames = [];
+      try {
+        for (let current = window; current !== current.top; current = current.parent) {
+          const element = current.frameElement;
+          if (!element) return null;
+          const rect = element.getBoundingClientRect();
+          const url = new URL(current.parent.location.href);
+          frames.unshift({url:url.origin+url.pathname,selectorPath:selectorPath(element),
+            rectViewport:[rect.x,rect.y,rect.width,rect.height],
+            scroll:[current.parent.scrollX,current.parent.scrollY]});
+        }
+        return frames;
+      } catch { return null; }
+    };
     const typed = "input, textarea, select, [contenteditable=''], [contenteditable='true']";
     const describe = (el) => {
       if (!(el instanceof Element)) return undefined;
@@ -130,7 +145,7 @@
       return Object.assign(target, component(el), { selection: {
         url: url.origin + url.pathname,
         selectorPath: selectorPath(el), rectViewport: [rect.x, rect.y, rect.width, rect.height],
-        scroll: [scrollX, scrollY], attributes, styles
+        scroll: [scrollX, scrollY], framePath:framePath(), attributes, styles
       }});
     };
 
