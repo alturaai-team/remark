@@ -96,12 +96,12 @@ fn parse_response(bytes: &[u8], duration_ms: u64) -> Result<TranscriptData> {
                 && segment.end.is_finite()
                 && segment.start >= 0.0
                 && segment.end >= segment.start
-                && (segment.end * 1000.0).round() <= duration_ms as f64,
+                && (segment.start * 1000.0).round() <= duration_ms as f64,
             "Časi prepisa Spokenly so zunaj posnetka"
         );
         segments.push(TranscriptSegment {
             t0: (segment.start * 1000.0).round() as u64,
-            t1: (segment.end * 1000.0).round() as u64,
+            t1: ((segment.end * 1000.0).round() as u64).min(duration_ms),
             text: segment.text,
         });
     }
