@@ -65,7 +65,7 @@
     const saved = markers.get(event.data.id);
     if (!saved) return;
     saved.marker.style.opacity = "1";
-    if (!event.data.ok) {saved.marker.textContent="!";saved.marker.title="Odpri Remark";}
+    if (!event.data.ok) {saved.marker.remove();markers.delete(event.data.id);}
   });
   const update = () => {
     hover.style.display="none";

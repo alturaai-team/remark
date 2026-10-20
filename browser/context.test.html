@@ -36,9 +36,14 @@
  assert(frames.every(frame=>frame.framePath[0].rectViewport[2]>0),'parent frame geometry is retained');
  const picker=document.createElement('script');picker.src='picker.js';
  const loaded=new Promise(resolve=>picker.onload=resolve);document.body.append(picker);await loaded;
+ const selected=new Promise(resolve=>addEventListener('message',function receive(event){if(event.data?.type==='remark-selection'){removeEventListener('message',receive);resolve(event.data.selection);}}));
  special.dispatchEvent(new PointerEvent('pointerdown',{bubbles:true,composed:true,button:0}));
  const overlay=document.querySelector('[aria-label="Označi element"]').shadowRoot;
  assert(overlay.children.length===2,'picker creates one marker');
+ const selection=await selected;
+ dispatchEvent(new MessageEvent('message',{source:window,origin:location.origin,data:{type:'remark-selection-result',id:selection.id,ok:false}}));
+ assert(overlay.children.length===1,'rejected annotations release marker and element references');
+ special.dispatchEvent(new PointerEvent('pointerdown',{bubbles:true,composed:true,button:0}));
  __remarkPicker.toggle();__remarkPicker.toggle();
  assert(overlay.children.length===1,'new picker session removes old markers');
  __remarkPicker.toggle();
