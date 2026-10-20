@@ -70,7 +70,7 @@ PLIST
 codesign --force --sign "${IDENTITY}" --identifier "dev.altura.remark.helper" "${MACOS_DIR}/scrawl-helper"
 codesign --force --sign "${IDENTITY}" --identifier "dev.altura.remark" "${APP_DIR}"
 
-BROWSER_DIR="${HOME}/Library/Application Support/remark/browser"
+BROWSER_DIR="${SCRAWL_BROWSER_DIR:-${HOME}/Library/Application Support/remark/browser}"
 mkdir -p "${BROWSER_DIR}"
 cp "${REPO_DIR}/browser/manifest.json" "${REPO_DIR}/browser/background.js" "${REPO_DIR}/browser/broker.js" "${REPO_DIR}/browser/context.js" "${REPO_DIR}/browser/picker.js" "${BROWSER_DIR}/"
 "${MACOS_DIR}/scrawl" connect
