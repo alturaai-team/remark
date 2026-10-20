@@ -241,6 +241,11 @@ mod tests {
     }
 
     #[test]
+    fn spokenly_is_a_selectable_transcription_provider() {
+        assert_eq!(Engine::parse("spokenly").map(Engine::name), Some("spokenly"));
+    }
+
+    #[test]
     fn engine_names_parse_and_unknown_is_not_an_engine() {
         assert_eq!(Engine::parse("hex"), Some(Engine::Hex));
         assert_eq!(Engine::parse(" Apple "), Some(Engine::Apple));

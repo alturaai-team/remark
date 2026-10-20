@@ -1,4 +1,6 @@
 mod agent_context;
+mod agentation;
+mod spokenly;
 mod audio;
 mod autocrop;
 // Windows looks elements up through UI Automation (`win/uia.rs`); other systems have no lookup.
