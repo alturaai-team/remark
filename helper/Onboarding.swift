@@ -168,15 +168,34 @@ final class OnboardingModel: ObservableObject {
 
 // MARK: Palette (matches the review window and HUD)
 
+/// Ordered-dither (Bayer 4x4) speckle over a background: the Konta-blue grain.
+struct Dither: View {
+  var body: some View {
+    Canvas { ctx, size in
+      let bayer: [Double] = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5]
+      let cell: CGFloat = 3
+      for y in 0..<Int(size.height / cell) {
+        for x in 0..<Int(size.width / cell) {
+          let fade = 1 - Double(y) * Double(cell) / Double(size.height)
+          if bayer[(y % 4) * 4 + x % 4] / 16 < fade * 0.12 {
+            ctx.fill(Path(CGRect(x: CGFloat(x) * cell, y: CGFloat(y) * cell, width: cell, height: cell)), with: .color(Palette.ink.opacity(0.35)))
+          }
+        }
+      }
+    }
+    .allowsHitTesting(false)
+  }
+}
+
 enum Palette {
-  static let canvas = Color(red: 0x16 / 255, green: 0x16 / 255, blue: 0x16 / 255)
-  static let surface = Color(red: 0x1D / 255, green: 0x1D / 255, blue: 0x1D / 255)
-  static let raised = Color(red: 0x25 / 255, green: 0x25 / 255, blue: 0x25 / 255)
+  static let canvas = Color(red: 0x0A / 255, green: 0x12 / 255, blue: 0x30 / 255)
+  static let surface = Color(red: 0x10 / 255, green: 0x1A / 255, blue: 0x3E / 255)
+  static let raised = Color(red: 0x18 / 255, green: 0x26 / 255, blue: 0x50 / 255)
   static let line = Color.white.opacity(0.09)
-  static let text = Color(red: 0xF2 / 255, green: 0xF2 / 255, blue: 0xF2 / 255)
-  static let soft = Color(red: 0xD0 / 255, green: 0xD0 / 255, blue: 0xD0 / 255)
-  static let muted = Color(red: 0x96 / 255, green: 0x96 / 255, blue: 0x96 / 255)
-  static let ink = Color(red: 1.0, green: 0x3B / 255, blue: 0x30 / 255)
+  static let text = Color(red: 0xEE / 255, green: 0xF2 / 255, blue: 0xFF / 255)
+  static let soft = Color(red: 0xC3 / 255, green: 0xCC / 255, blue: 0xEB / 255)
+  static let muted = Color(red: 0x8C / 255, green: 0x98 / 255, blue: 0xC4 / 255)
+  static let ink = Color(red: 0x2F / 255, green: 0x62 / 255, blue: 0xE6 / 255)
   static let positive = Color(red: 0x69 / 255, green: 0xD8 / 255, blue: 0x9F / 255)
 }
 
@@ -515,6 +534,7 @@ struct OnboardingView: View {
   var body: some View {
     ZStack {
       Palette.canvas
+      Dither()
       RadialGradient(colors: [Palette.ink.opacity(0.10), .clear], center: .top, startRadius: 0, endRadius: 360)
       VStack(spacing: 0) {
         page
@@ -840,7 +860,7 @@ final class Onboarding: NSObject, NSApplicationDelegate, NSWindowDelegate {
     window.title = "Welcome to Remark"
     window.isMovableByWindowBackground = true
     window.appearance = NSAppearance(named: .darkAqua)
-    window.backgroundColor = NSColor(calibratedWhite: 0x16 / 255, alpha: 1)
+    window.backgroundColor = NSColor(calibratedRed: 0x0A / 255, green: 0x12 / 255, blue: 0x30 / 255, alpha: 1)
     window.isReleasedWhenClosed = false
     // An ordinary window: System Settings and macOS's prompts always come up above it.
     window.level = .normal

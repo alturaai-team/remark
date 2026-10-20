@@ -210,8 +210,8 @@ struct SettingsTheme {
 
   private func ink(_ alpha: Double) -> Color { dark ? Color.white.opacity(alpha) : Color.black.opacity(alpha) }
 
-  var window: Color { dark ? Color(white: 0.118) : Color(white: 0.955) }
-  var sidebar: Color { dark ? Color(white: 0.15) : Color(white: 0.915) }
+  var window: Color { dark ? Palette.canvas : Color(white: 0.955) }
+  var sidebar: Color { dark ? Palette.surface : Color(white: 0.915) }
   var group: Color { dark ? Color.white.opacity(0.045) : Color.white }
   var groupLine: Color { ink(dark ? 0.075 : 0.08) }
   var separator: Color { ink(dark ? 0.07 : 0.075) }
@@ -224,7 +224,7 @@ struct SettingsTheme {
   var track: Color { ink(dark ? 0.12 : 0.13) }
   var key: Color { dark ? Color.black.opacity(0.28) : Color.black.opacity(0.035) }
   var keyLine: Color { ink(dark ? 0.08 : 0.09) }
-  var accent: Color { Color.accentColor }
+  var accent: Color { Palette.ink }
   var positive: Color { Color(red: 0.2, green: 0.74, blue: 0.42) }
   var negative: Color { Color(red: 1, green: 0.27, blue: 0.23) }
 }
@@ -683,7 +683,7 @@ struct SettingsView: View {
           ))
       }
       .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-      .background(theme.window)
+      .background(ZStack { theme.window; if theme.dark { Dither() } })
       .contentShape(Rectangle())
       .onTapGesture {
         if model.state.recording != nil { model.act("cancel-shortcut") }
