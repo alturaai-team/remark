@@ -453,6 +453,15 @@ mod tests {
     use super::*;
 
     #[test]
+    fn browser_annotations_require_the_pairing_token_even_on_localhost() {
+        let body = r#"{"tab":"test","events":[]}"#;
+        let denied = request(&format!("POST /web/annotations HTTP/1.1\r\nOrigin: http://localhost:3000\r\nContent-Length: {}\r\n\r\n{body}", body.len()), "test-only-token");
+        assert!(denied.starts_with("HTTP/1.1 403"), "a web page cannot write annotations without pairing");
+        let accepted = request(&format!("POST /web/annotations HTTP/1.1\r\nAuthorization: Bearer test-only-token\r\nContent-Length: {}\r\n\r\n{body}", body.len()), "test-only-token");
+        assert!(accepted.starts_with("HTTP/1.1 200"), "the paired local extension can reach annotation ingest");
+    }
+
+    #[test]
     fn loopback_origins_register_without_the_token_and_others_need_it() {
         for origin in [
             "http://localhost:5173",
