@@ -16,11 +16,11 @@ pub fn default_captures_dir() -> PathBuf {
             if cfg!(target_os = "windows") {
                 dirs::data_local_dir()
                     .unwrap_or_else(|| PathBuf::from("."))
-                    .join("scrawl/captures")
+                    .join("remark/captures")
             } else {
                 dirs::home_dir()
                     .unwrap_or_else(|| PathBuf::from("."))
-                    .join("Library/Application Support/scrawl/captures")
+                    .join("Library/Application Support/remark/captures")
             }
         })
 }
@@ -393,6 +393,10 @@ pub struct Config {
     /// `hex::PREFERRED_MODELS`).
     #[serde(default)]
     pub hex_model: Option<String>,
+    #[serde(default)]
+    pub spokenly_port: Option<u16>,
+    #[serde(default)]
+    pub agentation: Option<crate::agentation::Config>,
     /// Whether to use the native Metal recording pill instead of GPUI's `HudPillWindow` (default `true`).
     #[serde(default)]
     pub native_pill: Option<bool>,
@@ -496,7 +500,7 @@ pub fn default_config_path() -> PathBuf {
         .unwrap_or_else(|| {
             dirs::home_dir()
                 .unwrap_or_else(|| PathBuf::from("."))
-                .join(".config/scrawl/config.json")
+                .join(".config/remark/config.json")
         })
 }
 
@@ -530,7 +534,7 @@ fn config_from_value(value: serde_json::Value) -> Config {
     serde_json::from_value(serde_json::Value::Object(kept)).unwrap_or_default()
 }
 
-fn config() -> Config {
+pub(crate) fn config() -> Config {
     load_config_from(&default_config_path())
 }
 

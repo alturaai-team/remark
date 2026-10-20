@@ -1,4 +1,4 @@
-// `scrawl-helper permission-panel`: the "drag Scrawl into the list" card for the Privacy panes
+// `scrawl-helper permission-panel`: the "drag Remark into the list" card for the Privacy panes
 // that take a dragged app (Screen Recording, Accessibility).
 //
 //   scrawl-helper permission-panel --permission screen-recording|accessibility
@@ -96,9 +96,9 @@ enum PermissionPanel {
       if url.pathExtension.lowercased() == "app" { return url }
       url = url.deletingLastPathComponent()
     }
-    let installed = URL(filePath: NSHomeDirectory()).appending(path: "Applications/Scrawl.app")
+    let installed = URL(filePath: NSHomeDirectory()).appending(path: "Applications/Remark.app")
     if FileManager.default.fileExists(atPath: installed.path) { return installed }
-    return URL(filePath: "/Applications/Scrawl.app")
+    return URL(filePath: "/Applications/Remark.app")
   }
 
   /// For the onboarding window: launch the panel from a button's frame (AppKit screen

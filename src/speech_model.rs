@@ -86,7 +86,7 @@ fn update(change: impl FnOnce(&mut Status)) {
 /// Checks the model in the background and installs it if it's missing, unless the transcriber
 /// is Hex (whose users don't need it) or a check is already running. Cheap to call again.
 pub fn ensure() {
-    if crate::transcribe::Engine::configured() == crate::transcribe::Engine::Hex {
+    if crate::transcribe::Engine::configured() != crate::transcribe::Engine::Apple {
         return;
     }
     if matches!(current().state, State::Ready | State::Unavailable)
@@ -240,7 +240,8 @@ pub fn transcribe_again(dir: &Path) -> Result<bool> {
     let (dir, mut bundle) = crate::handoff::load_bundle(dir)?;
     let wav = dir.join(bundle.audio.as_deref().unwrap_or("audio.wav"));
     anyhow::ensure!(wav.is_file(), "the bundle has no audio.wav any more");
-    let transcript = crate::helper::transcribe(&wav)?;
+    let recorded = crate::audio::recorded_audio_from_wav(std::fs::read(&wav)?)?;
+    let transcript = crate::transcribe::transcribe(Some(&wav), Some(&recorded));
     if transcript
         .missing
         .as_ref()

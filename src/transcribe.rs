@@ -15,6 +15,7 @@ pub enum Engine {
     #[default]
     Apple,
     Hex,
+    Spokenly,
 }
 
 impl Engine {
@@ -22,6 +23,7 @@ impl Engine {
         match name.trim().to_ascii_lowercase().as_str() {
             "apple" => Some(Self::Apple),
             "hex" => Some(Self::Hex),
+            "spokenly" => Some(Self::Spokenly),
             _ => None,
         }
     }
@@ -30,6 +32,7 @@ impl Engine {
         match self {
             Self::Apple => "apple",
             Self::Hex => "hex",
+            Self::Spokenly => "spokenly",
         }
     }
 
@@ -46,6 +49,7 @@ impl Engine {
         match OVERRIDE.load(Ordering::Relaxed) {
             1 => Self::Apple,
             2 => Self::Hex,
+            3 => Self::Spokenly,
             _ => Self::configured(),
         }
     }
@@ -119,6 +123,7 @@ pub fn set_override(engine: Engine) {
         match engine {
             Engine::Apple => 1,
             Engine::Hex => 2,
+            Engine::Spokenly => 3,
         },
         Ordering::Relaxed,
     );
@@ -132,6 +137,9 @@ pub fn transcribe(wav: Option<&Path>, audio: Option<&RecordedAudio>) -> Transcri
             ..Default::default()
         };
     };
+    if Engine::preferred() == Engine::Spokenly {
+        return spokenly_result(crate::spokenly::transcribe(wav, audio.duration_ms));
+    }
     let live = audio.live.take();
     run(
         Engine::preferred(),
@@ -141,6 +149,20 @@ pub fn transcribe(wav: Option<&Path>, audio: Option<&RecordedAudio>) -> Transcri
                 .unwrap_or_else(|| apple(wav))
         },
     )
+}
+
+fn spokenly_result(result: Result<TranscriptData>) -> TranscriptData {
+    match result {
+        Ok(transcript) => transcript,
+        Err(_) => TranscriptData {
+            source: "spokenly".into(),
+            missing: Some(crate::model::MissingTranscript {
+                reason: "Prepis Spokenly ni uspel; posnetek je shranjen.".into(),
+                retry: false,
+            }),
+            ..TranscriptData::default()
+        },
+    }
 }
 
 /// The transcript made while recording, or `None` (logged) to transcribe the WAV instead.
@@ -243,6 +265,14 @@ mod tests {
     #[test]
     fn spokenly_is_a_selectable_transcription_provider() {
         assert_eq!(Engine::parse("spokenly").map(Engine::name), Some("spokenly"));
+    }
+
+    #[test]
+    fn spokenly_failure_keeps_the_provider_and_a_saved_recording_error() {
+        let transcript = spokenly_result(Err(anyhow::anyhow!("unreachable")));
+        assert_eq!(transcript.source, "spokenly", "an unavailable provider must not switch to Apple");
+        assert!(transcript.text.is_empty());
+        assert!(transcript.missing.is_some());
     }
 
     #[test]

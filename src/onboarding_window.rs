@@ -152,7 +152,7 @@ fn open(request: Request, cx: &mut App) {
         WindowOptions {
             window_bounds: Some(WindowBounds::Windowed(bounds)),
             titlebar: Some(gpui::TitlebarOptions {
-                title: Some("Welcome to Scrawl".into()),
+                title: Some("Welcome to Remark".into()),
                 appears_transparent: true,
                 traffic_light_position: Some(point(px(14.0), px(14.0))),
             }),
@@ -638,7 +638,7 @@ impl OnboardingWindow {
                     .font_weight(FontWeight::SEMIBOLD)
                     .text_color(rgb(TEXT))
                     .text_center()
-                    .child("How Scrawl works"),
+                    .child("How Remark works"),
             )
             .child(
                 div()
@@ -659,7 +659,7 @@ impl OnboardingWindow {
                     .child(row(
                         keycap(&shift, true, 26.0),
                         format!(
-                            "Talk as you go, and hold {shift} and drag to draw in red. Scrawl records your clicks too."
+                            "Talk as you go, and hold {shift} and drag to draw in red. Remark records your clicks too."
                         ),
                     ))
                     .child(divider())
@@ -820,7 +820,7 @@ impl OnboardingWindow {
         let note = if windows {
             ""
         } else {
-            "If macOS offers to Quit & Reopen Scrawl, choose Later; Scrawl reopens once when you're done."
+            "If macOS offers to Quit & Reopen Remark, choose Later; Remark reopens once when you're done."
         };
         let settings = if windows {
             "Windows Settings"
@@ -831,7 +831,7 @@ impl OnboardingWindow {
         let (title, body) = if state.fix && only(Permission::Camera) {
             (
                 "Camera, for your iPhone".to_owned(),
-                "macOS treats a cabled iPhone's screen as a camera, so Scrawl needs Camera access to show and record it. Pick iPhone again once it's on.".to_owned(),
+                "macOS treats a cabled iPhone's screen as a camera, so Remark needs Camera access to show and record it. Pick iPhone again once it's on.".to_owned(),
             )
         } else if state.fix && only(Permission::Accessibility) {
             (
@@ -848,7 +848,7 @@ impl OnboardingWindow {
             )
         } else if state.fix {
             (
-                "Scrawl can't record yet".to_owned(),
+                "Remark can't record yet".to_owned(),
                 format!("Turn these on, then press {} again. {note}", self.shortcut)
                     .trim_end()
                     .to_owned(),
@@ -857,7 +857,7 @@ impl OnboardingWindow {
             let count = rows.iter().filter(|r| r.required).count();
             (
                 format!(
-                    "Scrawl needs {} permission{}",
+                    "Remark needs {} permission{}",
                     number_word(count),
                     if count == 1 { "" } else { "s" }
                 ),
@@ -914,9 +914,9 @@ impl OnboardingWindow {
                     .text_color(rgb(SOFT))
                     .when(state.relaunch, |d| {
                         d.child(icon(crate::icons::REOPEN, 12.0, POSITIVE)).child(if state.fix {
-                            "Screen Recording turns on when Scrawl reopens."
+                            "Screen Recording turns on when Remark reopens."
                         } else {
-                            "Screen Recording turns on when Scrawl reopens. You'll pick up on the next step."
+                            "Screen Recording turns on when Remark reopens. You'll pick up on the next step."
                         })
                     }),
             )
@@ -926,7 +926,7 @@ impl OnboardingWindow {
         let primary: Option<(&str, &'static str, bool)> = match state.step {
             Step::Welcome => Some(("Get Started", "continue", true)),
             Step::HowItWorks => Some(("Continue", "continue", true)),
-            Step::Permissions if state.relaunch => Some(("Reopen Scrawl", "relaunch", true)),
+            Step::Permissions if state.relaunch => Some(("Reopen Remark", "relaunch", true)),
             Step::Permissions => Some((
                 if state.fix { "Done" } else { "Continue" },
                 "continue",
@@ -1079,7 +1079,7 @@ impl Render for OnboardingWindow {
                 .centered(
                     self.welcome_art(phase),
                     200.0,
-                    "Welcome to Scrawl",
+                    "Welcome to Remark",
                     "Record your screen and your voice, draw on what matters, and paste it all into your agent.".into(),
                 )
                 .into_any_element(),
@@ -1089,7 +1089,7 @@ impl Render for OnboardingWindow {
                 .centered(
                     self.try_art(phase),
                     164.0,
-                    "Make your first Scrawl",
+                    "Make your first Remark",
                     format!("Tap {s} now. Talk, point at something, then tap {s} again."),
                 )
                 .into_any_element(),
@@ -1099,7 +1099,7 @@ impl Render for OnboardingWindow {
                     164.0,
                     "It's on your clipboard",
                     format!(
-                        "Press {paste} in your agent. Scrawl stays in the {tray}; tap {s} whenever you want to show something."
+                        "Press {paste} in your agent. Remark stays in the {tray}; tap {s} whenever you want to show something."
                     ),
                 )
                 .into_any_element(),

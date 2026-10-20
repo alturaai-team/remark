@@ -319,7 +319,7 @@ fn open(request: Request, cx: &mut App) {
         WindowOptions {
             window_bounds: Some(WindowBounds::Windowed(bounds)),
             titlebar: Some(gpui::TitlebarOptions {
-                title: Some("Scrawl Settings".into()),
+                title: Some("Remark Settings".into()),
                 appears_transparent: true,
                 traffic_light_position: Some(point(px(20.0), px(20.0))),
             }),
@@ -794,7 +794,7 @@ impl SettingsWindow {
                             .child(self.item(theme, Pane::Permissions, cx))
                             .child(self.item(theme, Pane::Agents, cx)),
                     )
-                    .child(section("Scrawl"))
+                    .child(section("Remark"))
                     .child(self.item(theme, Pane::About, cx)),
             )
     }
@@ -910,16 +910,16 @@ impl SettingsWindow {
             column = column.child(caption(
                 theme,
                 if WINDOWS {
-                    "Turn Scrawl on in Settings › Apps › Startup."
+                    "Turn Remark on in Settings › Apps › Startup."
                 } else {
-                    "Allow Scrawl in System Settings › General › Login Items."
+                    "Allow Remark in System Settings › General › Login Items."
                 },
                 false,
             ));
         } else if !state.login.available {
             column = column.child(caption(
                 theme,
-                "Launch at login works in the installed Scrawl.app.",
+                "Launch at login works in the installed Remark.app.",
                 false,
             ));
         }
@@ -1031,13 +1031,14 @@ impl SettingsWindow {
         let engines = vec![
             ("apple".to_owned(), local.to_owned(), true),
             ("hex".to_owned(), t.hex_title.clone(), t.hex_enabled),
+            ("spokenly".to_owned(), "Spokenly".to_owned(), true),
         ];
         let chosen = t.models.iter().find(|m| m.chosen);
         let mut rows = vec![row(
             theme,
             "Transcription",
             true,
-            popup(theme, "settings-transcriber", if hex { "Hex" } else { local }).on_click(
+            popup(theme, "settings-transcriber", if t.engine == "spokenly" { "Spokenly" } else if hex { "Hex" } else { local }).on_click(
                 cx.listener({
                     let selected = t.engine.clone();
                     move |view, event: &ClickEvent, _, cx| {
@@ -1080,7 +1081,7 @@ impl SettingsWindow {
                 "Parakeet runs on this PC and times each word. Hex uses a model you have in Hex, and its word times are estimates."
             }
             (true, false) => {
-                "Parakeet runs on this PC and times each word. Scrawl downloads its 730 MB model once, unless Hex already has it. Hex shows up here while Hex is running."
+                "Parakeet runs on this PC and times each word. Remark downloads its 730 MB model once, unless Hex already has it. Hex shows up here while Hex is running."
             }
             (false, true) => {
                 "Apple Speech times each word. Hex uses a model you have in Hex, and its word times are estimates."
@@ -1100,7 +1101,7 @@ impl SettingsWindow {
             )),
             "failed" => Some((
                 format!(
-                    "The speech model couldn't be downloaded{}. Scrawl tries again in a few minutes.",
+                    "The speech model couldn't be downloaded{}. Remark tries again in a few minutes.",
                     t.speech
                         .error
                         .as_deref()
@@ -1230,9 +1231,9 @@ impl SettingsWindow {
             column = column.child(group(theme, required_rows)).child(caption(
                 theme,
                 if WINDOWS {
-                    "Scrawl needs the microphone to hear you. Recording the screen, clicks and shortcuts need no permission on Windows."
+                    "Remark needs the microphone to hear you. Recording the screen, clicks and shortcuts need no permission on Windows."
                 } else {
-                    "Scrawl needs these three to record."
+                    "Remark needs these three to record."
                 },
                 false,
             ));
@@ -1304,7 +1305,7 @@ impl SettingsWindow {
         let granted = row.status == Status::Granted;
         let id = SharedString::from(format!("settings-grant-{permission:?}"));
         let trailing: AnyElement = if granted && row.relaunch {
-            button(theme, id, "Reopen Scrawl", true)
+            button(theme, id, "Reopen Remark", true)
                 .on_click(cx.listener(|view, _, _, _| view.act(Action::Reopen)))
                 .into_any_element()
         } else if granted {
@@ -1456,7 +1457,7 @@ impl SettingsWindow {
                                     .text_size(px(14.0))
                                     .font_weight(FontWeight::SEMIBOLD)
                                     .text_color(theme.text())
-                                    .child("Scrawl"),
+                                    .child("Remark"),
                             )
                             .child(
                                 div()
@@ -1479,7 +1480,7 @@ impl SettingsWindow {
         if !state.updates {
             column = column.child(caption(
                 theme,
-                "Updates work in the installed Scrawl.app.",
+                "Updates work in the installed Remark.app.",
                 false,
             ));
         }

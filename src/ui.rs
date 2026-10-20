@@ -2880,6 +2880,7 @@ impl ScrawlCoordinator {
                         }
                     };
                     let stop_started = Instant::now();
+                    let capture_end_ms = crate::now_epoch_ms();
                     let (recording, recorded_audio, mut activity) = std::thread::scope(|s| {
                         let screen_handle = s.spawn(|| screen_session.stop());
                         let win_handle = s.spawn(|| {
@@ -2897,6 +2898,7 @@ impl ScrawlCoordinator {
                     activity.stop_started = Some(stop_started);
                     activity.stop_ms = Some(stop_started.elapsed().as_millis() as u64);
                     let duration_ms = recording.duration_ms;
+                    let agentation = crate::agentation::capture(capture_end_ms.saturating_sub(duration_ms), capture_end_ms);
                     let mut finalized = crate::finalize_capture_bundle(
                         &bundle_dir,
                         target,
@@ -2906,6 +2908,7 @@ impl ScrawlCoordinator {
                         recorded_audio,
                         None,
                         activity,
+                        agentation,
                     );
                     if let Ok((dir, bundle, _)) = &mut finalized
                         && let Some(Ok(Some(dest))) = route.map(std::thread::JoinHandle::join)
@@ -4396,7 +4399,7 @@ impl Render for BundleReviewWindow {
                     div()
                         .text_size(px(16.0))
                         .font_weight(FontWeight::SEMIBOLD)
-                        .child("Scrawl"),
+                        .child("Remark"),
                 )
                 .child(
                     div()
@@ -5217,7 +5220,7 @@ fn open_review_window(coord_entity: &Entity<ScrawlCoordinator>, cx: &mut App) {
             window_bounds: Some(WindowBounds::Windowed(bounds)),
             titlebar: Some(gpui::TitlebarOptions {
                 // The taskbar and Alt+Tab show it on Windows; macOS draws no title here.
-                title: cfg!(target_os = "windows").then(|| "Scrawl".into()),
+                title: cfg!(target_os = "windows").then(|| "Remark".into()),
                 appears_transparent: true,
                 traffic_light_position: Some(point(px(16.0), px(16.0))),
             }),

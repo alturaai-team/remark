@@ -26,6 +26,7 @@ mod keyframes;
 #[cfg(target_os = "macos")]
 mod laser_overlay;
 mod live_transcribe;
+mod local_api;
 mod mic;
 mod model;
 mod native;
@@ -80,7 +81,7 @@ struct Cli {
 }
 
 fn parse_engine(name: &str) -> Result<crate::transcribe::Engine, String> {
-    crate::transcribe::Engine::parse(name).ok_or_else(|| "expected `apple` or `hex`".to_owned())
+    crate::transcribe::Engine::parse(name).ok_or_else(|| "expected `apple`, `hex` or `spokenly`".to_owned())
 }
 
 /// `scrawl hex status`: connection, models and what the next recording would use.
@@ -152,6 +153,21 @@ fn mic_list() {
     if let Some(note) = pick.note() {
         println!("{note}");
     }
+}
+
+#[derive(Subcommand)]
+enum AgentationCommand {
+    /// Izpiši razpoložljive seje Agentation.
+    Sessions {
+        #[arg(long, default_value_t = 4747)]
+        port: u16,
+    },
+    /// Poveži izrecno izbrano sejo Agentation.
+    Use {
+        session: String,
+        #[arg(long, default_value_t = 4747)]
+        port: u16,
+    },
 }
 
 #[derive(Subcommand)]
@@ -249,7 +265,7 @@ enum Command {
         /// Copy the summary to the clipboard.
         #[arg(long)]
         clipboard: bool,
-        /// Transcribe with `apple` or `hex` instead of the configured transcriber.
+        /// Transcribe with `apple`, `hex` or `spokenly` instead of the configured transcriber.
         #[arg(long, value_parser = parse_engine)]
         transcriber: Option<crate::transcribe::Engine>,
     },
@@ -287,7 +303,7 @@ enum Command {
         /// many times real time first, as if recording, so the finish only transcribes the tail.
         #[arg(long, hide = true, requires = "bench")]
         live_speed: Option<f64>,
-        /// Transcribe with `apple` or `hex` instead of the configured transcriber.
+        /// Transcribe with `apple`, `hex` or `spokenly` instead of the configured transcriber.
         #[arg(long, value_parser = parse_engine)]
         transcriber: Option<crate::transcribe::Engine>,
         /// Turn an experiment on for this run, as `"experiments"` in `config.json` would
@@ -313,6 +329,16 @@ enum Command {
     Mic {
         #[command(subcommand)]
         command: MicCommand,
+    },
+    /// Poveži Spokenly in pripravi zajem za lepljenje agentu.
+    Connect {
+        #[arg(long, default_value_t = 51089)]
+        spokenly_port: u16,
+    },
+    /// Izberi spletno sejo za strukturirane pripombe.
+    Agentation {
+        #[command(subcommand)]
+        command: AgentationCommand,
     },
     /// Check the Hex transcriber: is it running, which models are ready, which one Scrawl uses.
     Hex {
@@ -728,6 +754,7 @@ pub fn prepare_visuals(
 #[derive(Default)]
 pub struct SourceExtras {
     pub source: Option<String>,
+    pub agentation: Option<agentation::Capture>,
     pub device: Option<DeviceInfo>,
     /// What the recorded app said about itself: values at the start, their changes, and screens.
     pub context: std::collections::BTreeMap<String, String>,
@@ -817,6 +844,7 @@ pub fn finalize_capture_bundle(
     recorded_audio: Option<RecordedAudio>,
     note: Option<String>,
     activity: windows::ActivityLog,
+    agentation: Option<agentation::Capture>,
 ) -> Result<(PathBuf, ScrawlBundle, String)> {
     let started_at = activity
         .stop_started
@@ -835,6 +863,7 @@ pub fn finalize_capture_bundle(
     }
     let wav_path = bundle_dir.join("audio.wav");
     let has_wav = wav_path.exists();
+    let flags = agentation.as_ref().map(agentation::times).into_iter().flatten().collect();
     let crop_settings = (target.mode == CaptureMode::Display)
         .then(autocrop::Settings::configured)
         .flatten();
@@ -906,6 +935,8 @@ pub fn finalize_capture_bundle(
         video_path.clone(),
         note,
         SourceExtras {
+            agentation,
+            flags,
             activity,
             video_offset_ms,
             autocrop: Some(crop_settings),
@@ -1023,6 +1054,7 @@ pub fn build_bundle_from_parts(
             video_offset_ms: extras.video_offset_ms,
             audio: audio_rel,
             source: extras.source,
+            agentation: extras.agentation,
             device: extras.device,
             context: extras.context,
             context_changes: extras.context_changes,
@@ -1175,6 +1207,7 @@ pub fn build_bundle_from_parts(
         video_offset_ms: extras.video_offset_ms,
         audio: audio_rel,
         source: extras.source,
+        agentation: extras.agentation,
         device: extras.device,
         context: extras.context,
         context_changes: extras.context_changes,
@@ -1545,11 +1578,13 @@ fn main() -> Result<()> {
                 )
             });
             std::thread::sleep(Duration::from_secs(duration.max(1)));
+            let capture_end_ms = now_epoch_ms();
             let recording = session.stop();
             let activity = window_log
                 .map(windows::WindowLogger::stop)
                 .unwrap_or_default();
             let recorded_audio = audio.and_then(|a| a.stop().ok());
+            let agentation = agentation::capture(capture_end_ms.saturating_sub(recording.duration_ms), capture_end_ms);
             let (_dir, _bundle, summary) = finalize_capture_bundle(
                 &bundle_dir,
                 target,
@@ -1559,6 +1594,7 @@ fn main() -> Result<()> {
                 recorded_audio,
                 note,
                 activity,
+                agentation,
             )?;
             print!("{summary}");
             Ok(())
@@ -1746,6 +1782,7 @@ fn main() -> Result<()> {
                             recorded,
                             iter_note,
                             iter_activity,
+                            old.agentation.clone(),
                         )?;
                         let _ = handoff::copy_bundle_to_clipboard(&iter_out);
                         runs_ms.push(t0.elapsed().as_secs_f64() * 1_000.0);
@@ -1839,6 +1876,8 @@ fn main() -> Result<()> {
                     Some(copied),
                     old.note,
                     SourceExtras {
+                        flags,
+                        agentation: old.agentation,
                         activity: windows::ActivityLog {
                             windows: old.windows,
                             cursor: old.cursor,
@@ -1921,6 +1960,17 @@ fn main() -> Result<()> {
             mic_list();
             Ok(())
         }
+        Command::Connect { spokenly_port } => {
+            spokenly::connect(spokenly_port)?;
+            Ok(())
+        }
+        Command::Agentation { command } => match command {
+            AgentationCommand::Sessions { port } => {
+                println!("{}", serde_json::to_string_pretty(&agentation::sessions(port)?)?);
+                Ok(())
+            }
+            AgentationCommand::Use { session, port } => agentation::connect(port, &session),
+        },
         Command::Hex {
             command: HexCommand::Status,
         } => {

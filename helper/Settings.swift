@@ -706,7 +706,7 @@ struct SettingsView: View {
         item(.permissions)
         item(.agents)
       }
-      section("Scrawl")
+      section("Remark")
       item(.about)
       Spacer()
     }
@@ -793,9 +793,9 @@ struct SettingsView: View {
         }
       }
       if state.login.needsApproval {
-        SettingsCaption(text: "Allow Scrawl in System Settings › General › Login Items.")
+        SettingsCaption(text: "Allow Remark in System Settings › General › Login Items.")
       } else if !state.login.available {
-        SettingsCaption(text: "Launch at login works in the installed Scrawl.app.")
+        SettingsCaption(text: "Launch at login works in the installed Remark.app.")
       }
       ForEach(state.shortcuts) { shortcut in
         ShortcutRecorder(model: model, shortcut: shortcut)
@@ -807,6 +807,7 @@ struct SettingsView: View {
     let t = state.transcriber
     var engines: [(id: String, title: String, enabled: Bool)] = [("apple", "Apple Speech", true)]
     engines.append(("hex", t.hexTitle, t.hexEnabled))
+    engines.append(("spokenly", "Spokenly", true))
     let chosenModel = t.models.first(where: \.chosen)
     let mic = state.microphone
     return VStack(spacing: 0) {
@@ -828,7 +829,7 @@ struct SettingsView: View {
       Color.clear.frame(height: 20)
       SettingsGroup {
         SettingsRow(title: "Transcription") {
-          SettingsPopup(value: t.engine == "hex" ? "Hex" : "Apple Speech", options: engines, selected: t.engine) {
+          SettingsPopup(value: t.engine == "spokenly" ? "Spokenly" : (t.engine == "hex" ? "Hex" : "Apple Speech"), options: engines, selected: t.engine) {
             model.set("transcriber", $0)
           }
         }
@@ -843,9 +844,11 @@ struct SettingsView: View {
           }
         }
       }
+      if t.engine != "spokenly" {
       SettingsCaption(text: t.hexEnabled || t.engine == "hex"
         ? "Apple Speech times each word. Hex uses a model you have in Hex, and its word times are estimates."
         : "Apple Speech runs on this Mac and times each word. Hex shows up here while Hex is running.")
+      }
       if t.engine == "apple", let line = t.speech?.line {
         SettingsCaption(text: line)
       }
@@ -891,7 +894,7 @@ struct SettingsView: View {
     let optional = state.permissions.filter { !$0.required }
     return VStack(spacing: 0) {
       SettingsGroup { permissionRows(required) }
-      SettingsCaption(text: "Scrawl needs these three to record.")
+      SettingsCaption(text: "Remark needs these three to record.")
       SettingsHeader("When you use them")
       SettingsGroup { permissionRows(optional) }
     }
@@ -947,7 +950,7 @@ struct SettingsView: View {
             Image(nsImage: icon).resizable().interpolation(.high).frame(width: 40, height: 40)
           }
           VStack(alignment: .leading, spacing: 1) {
-            Text("Scrawl").font(.system(size: 14, weight: .semibold)).foregroundStyle(theme.text)
+            Text("Remark").font(.system(size: 14, weight: .semibold)).foregroundStyle(theme.text)
             Text("Version \(state.version)").font(.system(size: 12).monospacedDigit()).foregroundStyle(theme.secondary)
           }
           Spacer()
@@ -957,7 +960,7 @@ struct SettingsView: View {
         .frame(height: 64)
       }
       if !state.updates {
-        SettingsCaption(text: "Updates work in the installed Scrawl.app.")
+        SettingsCaption(text: "Updates work in the installed Remark.app.")
       }
       SettingsHeader("Links")
       SettingsGroup {
@@ -1034,7 +1037,7 @@ struct PermissionLine: View {
       Spacer(minLength: 8)
       ZStack(alignment: .trailing) {
         if row.granted && row.relaunch {
-          SettingsButton(title: "Reopen Scrawl") { model.act("reopen") }
+          SettingsButton(title: "Reopen Remark") { model.act("reopen") }
         } else if row.granted {
           HStack(spacing: 5) {
             Image(systemName: "checkmark.circle.fill").foregroundStyle(theme.positive)
@@ -1156,7 +1159,7 @@ final class SettingsWindow: NSObject, NSApplicationDelegate, NSWindowDelegate {
     window.toolbarStyle = .unified
     window.titlebarAppearsTransparent = true
     window.titleVisibility = .hidden
-    window.title = "Scrawl Settings"
+    window.title = "Remark Settings"
     window.isMovableByWindowBackground = true
     window.isReleasedWhenClosed = false
     window.delegate = self
@@ -1325,10 +1328,10 @@ final class SettingsWindow: NSObject, NSApplicationDelegate, NSWindowDelegate {
       caption: "Installed with Homebrew. Agents and your terminal can run scrawl to read captures, zoom into a moment and export video.")
     var cliTaken = base
     cliTaken.commandLine = SettingsCommandLine(
-      button: nil, caption: "/usr/local/bin/scrawl is another program, so Scrawl leaves it alone.", error: true)
+      button: nil, caption: "/usr/local/bin/scrawl is another program, so Remark leaves it alone.", error: true)
     var cliDev = base
     cliDev.commandLine = SettingsCommandLine(
-      enabled: false, caption: "The command-line tool works in the installed Scrawl.app.")
+      enabled: false, caption: "The command-line tool works in the installed Remark.app.")
     var micChosen = base
     micChosen.microphone = SettingsMicrophone(selected: devices[1].id, value: "Shure MV7", options: micOptions, note: nil, meter: devices[1].id)
     var micMissing = base

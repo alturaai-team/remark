@@ -1203,7 +1203,7 @@ impl Panel {
                 self.status(Permission::Microphone) == Status::Granted,
             ),
             transcriber: TranscriberView {
-                engine: if menu.hex_checked { "hex" } else { "apple" },
+                engine: if engine == crate::transcribe::Engine::Spokenly { "spokenly" } else if menu.hex_checked { "hex" } else { "apple" },
                 hex_title: menu.hex_title,
                 hex_enabled: menu.hex_enabled,
                 models: menu
