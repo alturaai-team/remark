@@ -8,7 +8,9 @@ APP_DIR="${SCRAWL_APP_DIR:-${HOME}/Applications/Remark.app}"
 CONTENTS_DIR="${APP_DIR}/Contents"
 MACOS_DIR="${CONTENTS_DIR}/MacOS"
 RESOURCES_DIR="${CONTENTS_DIR}/Resources"
-IDENTITY="-"
+# A fixed local certificate (see docs/remark.md): macOS keeps its permission grants for it across
+# rebuilds, which it does not for ad-hoc signatures.
+IDENTITY="Remark Local Signing"
 
 cd "${REPO_DIR}"
 taskpolicy -c utility cargo build -j 3 --offline
@@ -67,10 +69,8 @@ cat > "${CONTENTS_DIR}/Info.plist" <<PLIST
 </plist>
 PLIST
 
-# An identifier-only designated requirement keeps macOS permissions (TCC) across rebuilds;
-# plain ad-hoc signing ties them to the binary hash, so every install asked again.
-codesign --force --sign "${IDENTITY}" --identifier "dev.altura.remark.helper" -r="designated => identifier \"dev.altura.remark.helper\"" "${MACOS_DIR}/scrawl-helper"
-codesign --force --sign "${IDENTITY}" --identifier "dev.altura.remark" -r="designated => identifier \"dev.altura.remark\"" "${APP_DIR}"
+codesign --force --sign "${IDENTITY}" --identifier "dev.altura.remark.helper" "${MACOS_DIR}/scrawl-helper"
+codesign --force --sign "${IDENTITY}" --identifier "dev.altura.remark" "${APP_DIR}"
 
 BROWSER_DIR="${SCRAWL_BROWSER_DIR:-${HOME}/Library/Application Support/remark/browser}"
 mkdir -p "${BROWSER_DIR}"
