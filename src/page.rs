@@ -8,7 +8,7 @@
 use std::collections::VecDeque;
 use std::sync::Mutex;
 
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 use crate::model::{InteractionEvent, Stroke};
 
@@ -25,7 +25,7 @@ const CLICK_MATCH_MS: u64 = 400;
 /// Seeks closer together than this read as one scrub.
 const SEEK_RUN_MS: u64 = 1_500;
 
-#[derive(Clone, Debug, Default, PartialEq, Deserialize)]
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Target {
     #[serde(default)]
@@ -43,7 +43,7 @@ pub struct Target {
     pub source: Option<String>,
 }
 
-#[derive(Clone, Debug, Default, PartialEq, Deserialize)]
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Media {
     #[serde(default)]
@@ -56,7 +56,7 @@ pub struct Media {
     pub paused: bool,
 }
 
-#[derive(Clone, Debug, Default, PartialEq, Deserialize)]
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Event {
     /// Epoch ms.
@@ -84,6 +84,19 @@ pub struct Event {
     pub event: Option<String>,
     #[serde(default)]
     pub media: Option<Media>,
+    #[serde(default)]
+    pub selection: Option<Selection>,
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Selection {
+    pub url: String,
+    pub selector_path: Vec<String>,
+    pub rect_viewport: [f64; 4],
+    pub scroll: [f64; 2],
+    pub attributes: std::collections::BTreeMap<String, String>,
+    pub styles: std::collections::BTreeMap<String, String>,
 }
 
 #[derive(Debug, Default, Deserialize)]
@@ -152,6 +165,7 @@ fn sanitize(event: Event, now: u64) -> Option<Event> {
         paused: m.paused,
     });
     Some(Event {
+        selection: None,
         t: event.t,
         kind: event.kind,
         focused: event.focused,
@@ -406,6 +420,27 @@ pub fn apply(
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn browser_selection_survives_the_page_log_with_geometry_and_source() {
+        let post: super::Post = serde_json::from_value(serde_json::json!({
+            "tab":"one", "events":[{"t":1000,"kind":"annotation","focused":true,
+                "target":{"tag":"button","component":"App > Save","source":"src/Save.tsx:12"},
+                "selection":{"url":"https://example.test/inbox","selectorPath":["#save"],
+                    "rectViewport":[10,20,80,30],"scroll":[0,400],
+                    "attributes":{"data-testid":"save"},"styles":{"font-size":"16px"}}
+            }]
+        })).unwrap();
+        let mut log = super::Log::default();
+        log.record("remark-browser", post, 1100);
+        let events = log.between(900, 1200);
+        assert_eq!(events.len(), 1, "an extension selection must survive the page log");
+        let selection = events[0].selection.as_ref().unwrap();
+        assert_eq!(selection.rect_viewport, [10.0,20.0,80.0,30.0], "viewport geometry must not become document geometry");
+        assert_eq!(selection.selector_path, vec!["#save"]);
+        assert_eq!(events[0].target.as_ref().unwrap().source.as_deref(), Some("src/Save.tsx:12"));
+        assert!(log.between(1101,1200).is_empty(), "another capture must not inherit this annotation");
+    }
+
     use super::*;
 
     fn event(t: u64, kind: &str) -> Event {

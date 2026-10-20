@@ -187,6 +187,9 @@ mod tests {
             "old and future annotations must not enter this capture"
         );
         assert_eq!(capture.annotations[0]["sourceFile"], "src/Save.tsx:12");
+        assert_eq!(times(&capture), vec![100, 400], "annotation times must use the recording clock");
+        let restored: Capture = serde_json::from_slice(&serde_json::to_vec(&capture).unwrap()).unwrap();
+        assert_eq!(restored, capture, "saved captures must retain annotation geometry and component identity");
         assert_eq!(
             capture.annotations[0]["boundingBox"]["y"], 40,
             "document coordinates must remain document coordinates"
