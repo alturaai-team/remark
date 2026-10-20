@@ -216,7 +216,7 @@ mod tests {
             for file in ["scrawl", "scrawl-helper"] {
                 std::fs::write(macos.join(file), "#!/bin/sh\n").unwrap();
             }
-            macos.join(NAME)
+            macos.join("scrawl")
         }
 
         fn places(&self, target: &Path, install: &[&str]) -> Places {

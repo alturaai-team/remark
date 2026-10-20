@@ -221,7 +221,9 @@ pub struct Log {
 }
 
 impl Log {
-    pub fn begin_capture(&mut self, _now: u64) {}
+    pub fn begin_capture(&mut self, now: u64) {
+        self.capture_start = Some(now);
+    }
     pub fn record(&mut self, origin: &str, post: Post, now: u64) -> usize {
         let mut accepted = 0;
         let key = (origin.to_owned(), post.tab.chars().take(32).collect());
@@ -243,10 +245,23 @@ impl Log {
             }
         }
         while tab.events.len() > MAX_EVENTS_PER_TAB {
-            tab.events.pop_front();
+            let removable = tab.events.iter().position(|event| {
+                !self
+                    .capture_start
+                    .is_some_and(|start| event.kind == "annotation" && event.t >= start)
+            });
+            let Some(index) = removable else {
+                break;
+            };
+            tab.events.remove(index);
         }
         for tab in &mut self.tabs {
-            tab.events.retain(|e| e.t + KEEP_MS >= now);
+            tab.events.retain(|e| {
+                e.t + KEEP_MS >= now
+                    || self
+                        .capture_start
+                        .is_some_and(|start| e.kind == "annotation" && e.t >= start)
+            });
         }
         self.tabs.retain(|t| !t.events.is_empty());
         if self.tabs.len() > MAX_TABS {
@@ -279,7 +294,25 @@ impl Log {
     }
 }
 
-static LOG: Mutex<Log> = Mutex::new(Log { tabs: Vec::new(), capture_start: None });
+static LOG: Mutex<Log> = Mutex::new(Log {
+    tabs: Vec::new(),
+    capture_start: None,
+});
+
+pub fn begin_capture() {
+    LOG.lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
+        .begin_capture(crate::now_epoch_ms());
+}
+
+pub fn finish_annotations(from: u64, to: u64) -> Vec<Event> {
+    let mut log = LOG
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let events = log.between(from, to);
+    log.capture_start = None;
+    events
+}
 
 pub fn record(origin: &str, post: Post) -> usize {
     LOG.lock()
@@ -454,11 +487,49 @@ mod tests {
             "selection":{"id":"one","number":1,"url":"https://example.test/","selectorPath":["#save"],
                 "rectViewport":[0,0,80,20],"scroll":[0,0],"attributes":{},"styles":{}}
         })).unwrap();
-        log.record("remark-browser", super::Post{tab:"one".into(),events:vec![annotation]},1000);
-        let events=(2000..2400).map(|t| super::Event{t,kind:"pointer".into(),focused:true,..Default::default()}).collect();
-        log.record("remark-browser",super::Post{tab:"one".into(),events},2400);
-        log.record("remark-browser",super::Post{tab:"one".into(),events:vec![super::Event{t:400000,kind:"pointer".into(),focused:true,..Default::default()}]},400000);
-        assert!(log.between(1000,400000).iter().any(|e| e.kind=="annotation"), "a long recording must retain its first annotation");
+        log.record(
+            "remark-browser",
+            super::Post {
+                tab: "one".into(),
+                events: vec![annotation],
+            },
+            1000,
+        );
+        let events = (2000..2400)
+            .map(|t| super::Event {
+                t,
+                kind: "pointer".into(),
+                focused: true,
+                ..Default::default()
+            })
+            .collect();
+        log.record(
+            "remark-browser",
+            super::Post {
+                tab: "one".into(),
+                events,
+            },
+            2400,
+        );
+        log.record(
+            "remark-browser",
+            super::Post {
+                tab: "one".into(),
+                events: vec![super::Event {
+                    t: 400000,
+                    kind: "pointer".into(),
+                    focused: true,
+                    ..Default::default()
+                }],
+            },
+            400000,
+        );
+        assert!(
+            log.between(1000, 400000)
+                .iter()
+                .any(|e| e.kind == "annotation"),
+            "a long recording must retain its first annotation"
+        );
     }
 
     #[test]

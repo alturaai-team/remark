@@ -12,10 +12,7 @@ pub struct Capture {
 }
 
 pub fn capture(start: u64, end: u64) -> Option<Capture> {
-    if !crate::handoff::experiment(crate::handoff::AGENT_CONTEXT) {
-        return None;
-    }
-    let annotations: Vec<Event> = crate::page::between(start, end)
+    let annotations: Vec<Event> = crate::page::finish_annotations(start, end)
         .into_iter()
         .filter(|event| {
             event.kind == "annotation"

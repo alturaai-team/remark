@@ -908,6 +908,7 @@ impl SharedCaptureTelemetry {
             .clear();
         self.shift_held.store(false, Ordering::Release);
         self.window_log_request.store(false, Ordering::Release);
+        crate::page::begin_capture();
         let agent_context = crate::handoff::experiment(crate::handoff::AGENT_CONTEXT);
         self.agent_context.store(agent_context, Ordering::Release);
         if agent_context {

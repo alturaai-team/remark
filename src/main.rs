@@ -1546,6 +1546,7 @@ fn main() -> Result<()> {
             });
             std::fs::create_dir_all(&bundle_dir)?;
             let video_path = bundle_dir.join("recording.mp4");
+            page::begin_capture();
             let audio = AudioRecorder::start().ok();
             let session = ScreenCaptureSession::start(
                 target.clone(),
