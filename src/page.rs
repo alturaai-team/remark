@@ -478,6 +478,39 @@ pub fn apply(
 
 #[cfg(test)]
 mod tests {
+    fn annotation(t: u64) -> super::Event {
+        serde_json::from_value(serde_json::json!({
+            "t":t,"kind":"annotation","focused":true,"target":{"tag":"button"},
+            "selection":{"id":t.to_string(),"number":1,"url":"https://example.test/","selectorPath":["#save"],
+                "rectViewport":[0,0,80,20],"scroll":[0,0],"attributes":{},"styles":{}}
+        })).unwrap()
+    }
+
+    #[test]
+    fn active_annotations_survive_seventeen_frames() {
+        let mut log = super::Log::default();
+        log.begin_capture(1000);
+        for frame in 0..17 {
+            log.record("browser", super::Post { tab:frame.to_string(), events:vec![annotation(1000)] }, 1000);
+        }
+        assert_eq!(log.between(1000,1000).len(),17,"every acknowledged frame annotation survives");
+    }
+
+    #[test]
+    fn annotation_capacity_rejects_overflow_without_losing_acknowledged_events() {
+        let mut log = super::Log::default();
+        log.begin_capture(1000);
+        let mut accepted = 0;
+        for t in 1000..1400 {
+            accepted += log.record("browser", super::Post { tab:"one".into(), events:vec![annotation(t)] },t);
+        }
+        assert_eq!(accepted,300,"overflow is rejected rather than acknowledged");
+        assert_eq!(log.between(1000,1400).len(),300,"acknowledged annotations remain bounded");
+        log.capture_start = None;
+        log.record("browser",super::Post {tab:"one".into(),events:vec![]},400000);
+        assert!(log.between(0,400000).is_empty(),"ended capture releases expired annotations");
+    }
+
     #[test]
     fn active_recording_keeps_annotations_beyond_the_telemetry_window() {
         let mut log = super::Log::default();
