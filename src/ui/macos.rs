@@ -597,7 +597,7 @@ pub(super) fn install_status_bar() -> Option<flume::Receiver<MenuAction>> {
     let mtm = MainThreadMarker::new()?;
     let (sender, receiver) = flume::bounded(16);
     let target = ScrawlMenuTarget::new(sender, mtm);
-    let menu = NSMenu::initWithTitle(NSMenu::alloc(mtm), &NSString::from_str("Scrawl"));
+    let menu = NSMenu::initWithTitle(NSMenu::alloc(mtm), &NSString::from_str("Remark"));
 
     let add = |title: &str, action: objc2::runtime::Sel| {
         let item = unsafe {
@@ -630,7 +630,7 @@ pub(super) fn install_status_bar() -> Option<flume::Receiver<MenuAction>> {
         item.setKeyEquivalent(&NSString::from_str(","));
     }
     add("Check for Updates…", sel!(checkForUpdates:));
-    add("Quit Scrawl", sel!(quitApp:));
+    add("Quit Remark", sel!(quitApp:));
     if let Some(item) = menu.itemAtIndex(menu.numberOfItems() - 1) {
         item.setKeyEquivalent(&NSString::from_str("q"));
     }
@@ -1055,7 +1055,7 @@ pub(super) fn capture_own_window_screenshot(
                     .is_some_and(|a| a.process_id() == pid)
         })
         .max_by_key(|w| (w.frame().size.width as u64) * (w.frame().size.height as u64))
-        .ok_or_else(|| anyhow::anyhow!("Could not find Scrawl window"))?;
+        .ok_or_else(|| anyhow::anyhow!("Could not find Remark window"))?;
     let frame = window.frame();
     let filter = SCContentFilter::create()
         .with_window(&window)
