@@ -1,6 +1,6 @@
 # Remark
 
-Fork Scrawla za Spokenly prepis in pripombe Agentation. [Namestitev in uporaba](docs/remark.md).
+Fork Scrawla za Spokenly prepis in lasten izbirnik elementov brez vgradnje v spletno aplikacijo. [Namestitev in uporaba](docs/remark.md).
 
 Izvirna dokumentacija Scrawla je spodaj; v tem forku so ime aplikacije, konfiguracija in mapa posnetkov ločeni.
 

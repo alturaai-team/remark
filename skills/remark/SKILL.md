@@ -1,11 +1,11 @@
 ---
-name: scrawl
-description: Read and dig into Scrawl screen captures, where someone recorded their screen while talking, clicking and drawing red marks on it. Use whenever a message contains a Scrawl capture (a line like `[scrawl 0:12 · App “Window” · /path/to/….scrawl]`, a `.scrawl` bundle path, or a contact-sheet.png from one), when the user says "look at my scrawl" or refers to something they just recorded or drew, or when you need the `scrawl` CLI to zoom into a moment, pull frames, send a capture to a session, or export one as video.
+name: remark
+description: Read and dig into Remark screen captures, where someone recorded their screen while talking, clicking and drawing red marks on it. Use whenever a message contains a Remark capture (a line like `[scrawl 0:12 · App “Window” · /path/to/….scrawl]`, a `.scrawl` bundle path, or a contact-sheet.png from one), when the user says "look at my scrawl" or refers to something they just recorded or drew, or when you need the `remark` CLI to zoom into a moment, pull frames, send a capture to a session, or export one as video.
 ---
 
-# Scrawl captures
+# Remark captures
 
-Scrawl records someone's screen, voice, clicks and red ink, then packs the result into a `.scrawl` folder (a bundle). They send it to show you a problem instead of describing it, so the capture is the bug report. Read it closely before you answer, and don't ask them to explain again what the capture already shows. If something is unclear, look closer with `scrawl zoom` first.
+Remark records someone's screen, voice, clicks and red ink, then packs the result into a `.scrawl` folder (a bundle). They send it to show you a problem instead of describing it, so the capture is the bug report. Read it closely before you answer, and don't ask them to explain again what the capture already shows. If something is unclear, look closer with `remark zoom` first.
 
 ## What a paste looks like
 
@@ -21,7 +21,7 @@ Cropped to: the activity in OpenCode (full frames in frames-full/)
 - The first line has the length, the app and window recorded, and the bundle path.
 - Each `#N (M:SS)` line is a keyframe: what they did at that moment in brackets, then what they said while it was on screen. A line with no quote has the action alone.
 - `⚑` means they flagged the moment on purpose. `⟨Name⟩` means the app reported a new screen. Lines starting `·` are events or values the app logged.
-- Optional lines near the top: `For session:` (where Scrawl sent it), `Screen:` with app context, `Note:`, and `Cropped to:`.
+- Optional lines near the top: `For session:` (where Remark sent it), `Screen:` with app context, `Note:`, and `Cropped to:`.
 - Coordinates are fractions of the captured area, from the top left (x 0.51 is just right of centre).
 
 When you answer, refer to moments the same way, as in "#3 (0:10)", so the person can find them on the contact sheet.
@@ -38,11 +38,11 @@ What the drawings mean:
 - A ripple around the cursor shows a click or tap, and a finger trail shows a swipe.
 - A glowing red trail that tapers off is the laser pointer, used to point without leaving a mark.
 
-Other files: `scrawl.json` is the full manifest (keyframes, `marks` with shape and box, `events`, `transcript.words` with times, app `context`, and `autocrop`). `recording.mp4` or `recording.mov` and `audio.wav` are the source media. A `.media-pending` file means the video is still being copied from another Mac.
+Other files: `remark.json` is the full manifest (keyframes, `marks` with shape and box, `events`, `transcript.words` with times, app `context`, and `autocrop`). `recording.mp4` or `recording.mov` and `audio.wav` are the source media. A `.media-pending` file means the video is still being copied from another Mac.
 
-## The scrawl CLI
+## The remark CLI
 
-`scrawl` is the Scrawl app's own binary. If `command -v scrawl` finds nothing, use `/Applications/Scrawl.app/Contents/MacOS/scrawl` (or the same path under `~/Applications`), and tell the person they can put it on PATH with Install in Scrawl's Settings › Agents. It runs only on the Mac with Scrawl installed. Anywhere else, read `contact-sheet.png`, `frames/` and `scrawl.json` directly. Every command takes a bundle path, and most default to `latest`, the newest capture. Quote the path, because it usually contains `Application Support`.
+`remark` is the Remark app's own binary. If `command -v scrawl` finds nothing, use `/Applications/Remark.app/Contents/MacOS/scrawl` (or the same path under `~/Applications`), and tell the person they can put it on PATH with Install in Remark's Settings › Agents. It runs only on the Mac with Remark installed. Anywhere else, read `contact-sheet.png`, `frames/` and `remark.json` directly. Every command takes a bundle path, and most default to `latest`, the newest capture. Quote the path, because it usually contains `Application Support`.
 
 ### Look closer at a moment
 
@@ -67,8 +67,8 @@ scrawl send <bundle> --clipboard      # copy the summary text to the clipboard
 scrawl export <bundle> [--out demo.mp4] [--zoom] [--crop auto|full|x,y,w,h] [--size 1920]
 ```
 
-- `zoom` and `frames` write into `<bundle>/zoom/`. Leave the rest of the bundle as it is, because Scrawl manages those files and cleans them up.
+- `zoom` and `frames` write into `<bundle>/zoom/`. Leave the rest of the bundle as it is, because Remark manages those files and cleans them up.
 - `send` without `--session` goes to the session the capture was addressed to (the `For session:` line), and otherwise to the most recently active session. With a recorded destination it refuses a different `--session` unless you pass `--reroute`, so check with the person before rerouting.
-- `export` writes one `.mp4` with the ink and clicks burned in and the audio in sync (default `~/Movies/Scrawl/<bundle>.mp4`). `--zoom` eases in toward the activity. `--no-ink`, `--no-clicks`, `--hevc` and `--fps` are also available.
-- Video and audio go to the Trash 7 days after a capture unless the person changed that in Settings. After that `zoom`, `frames` and `export` can't read the video, but `frames/`, the contact sheet and `scrawl.json` remain.
-- `scrawl <command> --help` lists every flag, and `scrawl skill` prints this guide as the installed version knows it.
+- `export` writes one `.mp4` with the ink and clicks burned in and the audio in sync (default `~/Movies/Remark/<bundle>.mp4`). `--zoom` eases in toward the activity. `--no-ink`, `--no-clicks`, `--hevc` and `--fps` are also available.
+- Video and audio go to the Trash 7 days after a capture unless the person changed that in Settings. After that `zoom`, `frames` and `export` can't read the video, but `frames/`, the contact sheet and `remark.json` remain.
+- `remark <command> --help` lists every flag, and `remark skill` prints this guide as the installed version knows it.

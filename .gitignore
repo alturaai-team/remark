@@ -6,3 +6,5 @@
 /.swiftpm
 /artifacts
 /*.scrawl
+
+/browser/connection.json

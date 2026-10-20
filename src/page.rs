@@ -91,6 +91,8 @@ pub struct Event {
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Selection {
+    pub id: String,
+    pub number: u32,
     pub url: String,
     pub selector_path: Vec<String>,
     pub rect_viewport: [f64; 4],
@@ -133,7 +135,7 @@ fn bare_path(raw: &str) -> Option<String> {
 
 /// The event as it may be kept, or `None` for an unknown kind or a time far from `now`.
 fn sanitize(event: Event, now: u64) -> Option<Event> {
-    let kinds = ["pointer", "mark", "error", "request", "media"];
+    let kinds = ["pointer", "mark", "error", "request", "media", "annotation"];
     if !kinds.contains(&event.kind.as_str()) || event.t + KEEP_MS < now || event.t > now + 5_000 {
         return None;
     }
@@ -147,8 +149,8 @@ fn sanitize(event: Event, now: u64) -> Option<Event> {
         id: clip_opt(t.id, MAX_TEXT),
         cls: clip_opt(t.cls, MAX_TEXT),
         text: clip_opt(t.text, MAX_TEXT),
-        component: clip_opt(t.component, MAX_TEXT),
-        source: clip_opt(t.source, 120),
+        component: clip_opt(t.component, 500),
+        source: clip_opt(t.source, 1024),
     });
     let media = event.media.map(|m| Media {
         src: clip(&m.src, MAX_TEXT).unwrap_or_default(),
@@ -164,8 +166,26 @@ fn sanitize(event: Event, now: u64) -> Option<Event> {
         },
         paused: m.paused,
     });
+    let selection = event.selection.filter(|s| {
+        !s.id.is_empty()
+            && s.number > 0
+            && !s.selector_path.is_empty()
+            && s.selector_path
+                .iter()
+                .all(|part| !part.is_empty() && part.len() <= 4096)
+            && s.rect_viewport
+                .iter()
+                .chain(s.scroll.iter())
+                .all(|n| n.is_finite())
+            && s.rect_viewport[2] >= 0.0
+            && s.rect_viewport[3] >= 0.0
+            && (s.url.starts_with("https://") || s.url.starts_with("http://"))
+    });
+    if event.kind == "annotation" && (selection.is_none() || target.is_none()) {
+        return None;
+    }
     Some(Event {
-        selection: None,
+        selection,
         t: event.t,
         kind: event.kind,
         focused: event.focused,
@@ -197,10 +217,13 @@ struct Tab {
 #[derive(Debug, Default)]
 pub struct Log {
     tabs: Vec<Tab>,
+    capture_start: Option<u64>,
 }
 
 impl Log {
-    pub fn record(&mut self, origin: &str, post: Post, now: u64) {
+    pub fn begin_capture(&mut self, _now: u64) {}
+    pub fn record(&mut self, origin: &str, post: Post, now: u64) -> usize {
+        let mut accepted = 0;
         let key = (origin.to_owned(), post.tab.chars().take(32).collect());
         let index = match self.tabs.iter().position(|t| t.key == key) {
             Some(i) => i,
@@ -216,6 +239,7 @@ impl Log {
         for event in post.events.into_iter().take(64) {
             if let Some(event) = sanitize(event, now) {
                 tab.events.push_back(event);
+                accepted += 1;
             }
         }
         while tab.events.len() > MAX_EVENTS_PER_TAB {
@@ -230,6 +254,7 @@ impl Log {
                 .sort_by_key(|t| std::cmp::Reverse(t.events.back().map_or(0, |e| e.t)));
             self.tabs.truncate(MAX_TABS);
         }
+        accepted
     }
 
     /// Events between two epoch times from the tabs the user was in then: ones that were clicked,
@@ -254,12 +279,12 @@ impl Log {
     }
 }
 
-static LOG: Mutex<Log> = Mutex::new(Log { tabs: Vec::new() });
+static LOG: Mutex<Log> = Mutex::new(Log { tabs: Vec::new(), capture_start: None });
 
-pub fn record(origin: &str, post: Post) {
+pub fn record(origin: &str, post: Post) -> usize {
     LOG.lock()
         .unwrap_or_else(std::sync::PoisonError::into_inner)
-        .record(origin, post, crate::now_epoch_ms());
+        .record(origin, post, crate::now_epoch_ms())
 }
 
 pub fn between(from: u64, to: u64) -> Vec<Event> {
@@ -421,11 +446,27 @@ pub fn apply(
 #[cfg(test)]
 mod tests {
     #[test]
+    fn active_recording_keeps_annotations_beyond_the_telemetry_window() {
+        let mut log = super::Log::default();
+        log.begin_capture(1000);
+        let annotation: super::Event = serde_json::from_value(serde_json::json!({
+            "t":1000,"kind":"annotation","focused":true,"target":{"tag":"button"},
+            "selection":{"id":"one","number":1,"url":"https://example.test/","selectorPath":["#save"],
+                "rectViewport":[0,0,80,20],"scroll":[0,0],"attributes":{},"styles":{}}
+        })).unwrap();
+        log.record("remark-browser", super::Post{tab:"one".into(),events:vec![annotation]},1000);
+        let events=(2000..2400).map(|t| super::Event{t,kind:"pointer".into(),focused:true,..Default::default()}).collect();
+        log.record("remark-browser",super::Post{tab:"one".into(),events},2400);
+        log.record("remark-browser",super::Post{tab:"one".into(),events:vec![super::Event{t:400000,kind:"pointer".into(),focused:true,..Default::default()}]},400000);
+        assert!(log.between(1000,400000).iter().any(|e| e.kind=="annotation"), "a long recording must retain its first annotation");
+    }
+
+    #[test]
     fn browser_selection_survives_the_page_log_with_geometry_and_source() {
         let post: super::Post = serde_json::from_value(serde_json::json!({
             "tab":"one", "events":[{"t":1000,"kind":"annotation","focused":true,
                 "target":{"tag":"button","component":"App > Save","source":"src/Save.tsx:12"},
-                "selection":{"url":"https://example.test/inbox","selectorPath":["#save"],
+                "selection":{"id":"note-one","number":1,"url":"https://example.test/inbox","selectorPath":["#save"],
                     "rectViewport":[10,20,80,30],"scroll":[0,400],
                     "attributes":{"data-testid":"save"},"styles":{"font-size":"16px"}}
             }]
@@ -433,12 +474,26 @@ mod tests {
         let mut log = super::Log::default();
         log.record("remark-browser", post, 1100);
         let events = log.between(900, 1200);
-        assert_eq!(events.len(), 1, "an extension selection must survive the page log");
+        assert_eq!(
+            events.len(),
+            1,
+            "an extension selection must survive the page log"
+        );
         let selection = events[0].selection.as_ref().unwrap();
-        assert_eq!(selection.rect_viewport, [10.0,20.0,80.0,30.0], "viewport geometry must not become document geometry");
+        assert_eq!(
+            selection.rect_viewport,
+            [10.0, 20.0, 80.0, 30.0],
+            "viewport geometry must not become document geometry"
+        );
         assert_eq!(selection.selector_path, vec!["#save"]);
-        assert_eq!(events[0].target.as_ref().unwrap().source.as_deref(), Some("src/Save.tsx:12"));
-        assert!(log.between(1101,1200).is_empty(), "another capture must not inherit this annotation");
+        assert_eq!(
+            events[0].target.as_ref().unwrap().source.as_deref(),
+            Some("src/Save.tsx:12")
+        );
+        assert!(
+            log.between(1101, 1200).is_empty(),
+            "another capture must not inherit this annotation"
+        );
     }
 
     use super::*;

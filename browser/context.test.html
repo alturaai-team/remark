@@ -1,0 +1,31 @@
+<!doctype html><meta charset="utf-8"><title>Remark context checks</title>
+<button id="save:special">Shrani</button><button id="duplicate">Prvi</button><button id="duplicate">Drugi</button>
+<input type="password" value="private-test-value"><div id="shadow-host"></div><pre id="results"></pre>
+<script src="context.js"></script><script>
+try {
+ const checks=[];
+ const assert=(ok,name)=>{if(!ok)throw new Error(name);checks.push(name);};
+ const special=document.getElementById('save:special');
+ const first=RemarkContext.describe(special);
+ assert(document.querySelector(first.selection.selectorPath[0])===special,'escaped selector resolves exact element');
+ const second=document.querySelectorAll('#duplicate')[1];
+ const duplicate=RemarkContext.describe(second);
+ assert(document.querySelector(duplicate.selection.selectorPath[0])===second,'duplicate IDs do not select another element');
+ const host=document.getElementById('shadow-host');const shadow=host.attachShadow({mode:'open'});
+ shadow.innerHTML='<button id="inside">Shadow</button>';
+ const child=shadow.querySelector('button');const nested=RemarkContext.describe(child);
+ assert(nested.selection.selectorPath.length===2,'shadow boundaries remain explicit');
+ assert(document.querySelector(nested.selection.selectorPath[0]).shadowRoot.querySelector(nested.selection.selectorPath[1])===child,'shadow path resolves exact element');
+ function SaveButton(){}function App(){}
+ special['__reactFiber$fixture']={type:'button',_debugSource:{fileName:'http://localhost:3000/src/Save.tsx',lineNumber:12},return:{type:SaveButton,return:{type:App,return:null}}};
+ const react=RemarkContext.describe(special);
+ assert(react.component==='App > SaveButton' && react.source==='src/Save.tsx:12','available component and source metadata are preserved');
+ const password=RemarkContext.describe(document.querySelector('input'));
+ assert(!JSON.stringify(password).includes('private-test-value'),'password values are excluded');
+ assert(!RemarkContext.describe(document.querySelector('button:nth-of-type(2)')).source,'missing source metadata is not invented');
+ document.getElementById('results').textContent=JSON.stringify(checks);
+ document.body.dataset.testStatus='passed';
+} catch(error) {
+ document.body.dataset.testStatus='failed';document.getElementById('results').textContent=error.message;throw error;
+}
+</script>

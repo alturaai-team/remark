@@ -65,7 +65,7 @@ pub struct ScrawlBundle {
     pub target: TargetInfo,
     pub transcript: TranscriptData,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub agentation: Option<crate::agentation::Capture>,
+    pub browser: Option<crate::browser::Capture>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub note: Option<String>,
     pub strokes: Vec<Stroke>,

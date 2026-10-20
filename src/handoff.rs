@@ -395,8 +395,6 @@ pub struct Config {
     pub hex_model: Option<String>,
     #[serde(default)]
     pub spokenly_port: Option<u16>,
-    #[serde(default)]
-    pub agentation: Option<crate::agentation::Config>,
     /// Whether to use the native Metal recording pill instead of GPUI's `HudPillWindow` (default `true`).
     #[serde(default)]
     pub native_pill: Option<bool>,

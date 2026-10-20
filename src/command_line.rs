@@ -10,7 +10,7 @@ use std::path::{Path, PathBuf};
 
 use anyhow::{Context, Result, bail};
 
-const NAME: &str = "scrawl";
+const NAME: &str = "remark";
 
 /// The binary to link and the folders to look in.
 #[derive(Clone, Debug)]
@@ -216,7 +216,7 @@ mod tests {
             for file in ["scrawl", "scrawl-helper"] {
                 std::fs::write(macos.join(file), "#!/bin/sh\n").unwrap();
             }
-            macos.join("scrawl")
+            macos.join(NAME)
         }
 
         fn places(&self, target: &Path, install: &[&str]) -> Places {
@@ -241,7 +241,7 @@ mod tests {
         std::fs::create_dir_all(sb.0.join("brew/bin")).unwrap();
         // The first folder doesn't exist, so the second (which does) is used.
         let places = sb.places(&target, &["missing/bin", "brew/bin", "local/bin"]);
-        let link = sb.0.join("brew/bin/scrawl");
+        let link = sb.0.join("brew/bin/remark");
         assert_eq!(state(&places), State::Missing { link: link.clone() });
         assert_eq!(install(&places).unwrap(), link);
         assert_eq!(std::fs::read_link(&link).unwrap(), target);
@@ -264,12 +264,12 @@ mod tests {
         let sb = Sandbox::new("local");
         let target = sb.app("Scrawl.app");
         let places = sb.places(&target, &["opt/bin", "local/bin"]);
-        let link = sb.0.join("local/bin/scrawl");
+        let link = sb.0.join("local/bin/remark");
         assert_eq!(state(&places), State::Missing { link: link.clone() });
         install(&places).unwrap();
         assert!(links_to(&link, &target));
         assert!(!usually_on_path(&link));
-        assert!(usually_on_path(Path::new("/opt/homebrew/bin/scrawl")));
+        assert!(usually_on_path(Path::new("/opt/homebrew/bin/remark")));
     }
 
     #[cfg(unix)]
@@ -284,7 +284,7 @@ mod tests {
         let places = sb.places(&target, &["locked/bin", "local/bin"]);
         let result = install(&places);
         std::fs::set_permissions(&locked, std::fs::Permissions::from_mode(0o755)).unwrap();
-        assert_eq!(result.unwrap(), sb.0.join("local/bin/scrawl"));
+        assert_eq!(result.unwrap(), sb.0.join("local/bin/remark"));
     }
 
     #[test]
@@ -293,23 +293,23 @@ mod tests {
         let target = sb.app("Scrawl.app");
         let bin = sb.0.join("brew/bin");
         std::fs::create_dir_all(&bin).unwrap();
-        std::fs::write(bin.join("scrawl"), "someone else's").unwrap();
+        std::fs::write(bin.join(NAME), "someone else's").unwrap();
         let places = sb.places(&target, &["brew/bin", "local/bin"]);
         assert_eq!(
             state(&places),
             State::Taken {
-                link: bin.join("scrawl")
+                link: bin.join(NAME)
             }
         );
         assert!(install(&places).is_err());
         uninstall(&places).unwrap();
         assert_eq!(
-            std::fs::read_to_string(bin.join("scrawl")).unwrap(),
+            std::fs::read_to_string(bin.join(NAME)).unwrap(),
             "someone else's"
         );
         // A symlink to some other tool counts as taken too.
-        std::fs::remove_file(bin.join("scrawl")).unwrap();
-        std::os::unix::fs::symlink("/usr/bin/true", bin.join("scrawl")).unwrap();
+        std::fs::remove_file(bin.join(NAME)).unwrap();
+        std::os::unix::fs::symlink("/usr/bin/true", bin.join(NAME)).unwrap();
         assert!(matches!(state(&places), State::Taken { .. }));
     }
 
@@ -320,26 +320,26 @@ mod tests {
         let old = sb.app("Old/Scrawl.app");
         let bin = sb.0.join("brew/bin");
         std::fs::create_dir_all(&bin).unwrap();
-        std::os::unix::fs::symlink(&old, bin.join("scrawl")).unwrap();
+        std::os::unix::fs::symlink(&old, bin.join(NAME)).unwrap();
         let places = sb.places(&target, &["brew/bin"]);
         assert_eq!(
             state(&places),
             State::Stale {
-                link: bin.join("scrawl")
+                link: bin.join(NAME)
             }
         );
         install(&places).unwrap();
-        assert_eq!(std::fs::read_link(bin.join("scrawl")).unwrap(), target);
+        assert_eq!(std::fs::read_link(bin.join(NAME)).unwrap(), target);
         // A link whose app was deleted is stale as well.
-        std::fs::remove_file(bin.join("scrawl")).unwrap();
+        std::fs::remove_file(bin.join(NAME)).unwrap();
         std::os::unix::fs::symlink(
             sb.0.join("Gone.app/Contents/MacOS/scrawl"),
-            bin.join("scrawl"),
+            bin.join(NAME),
         )
         .unwrap();
         assert!(matches!(state(&places), State::Stale { .. }));
         uninstall(&places).unwrap();
-        assert!(bin.join("scrawl").symlink_metadata().is_err());
+        assert!(bin.join(NAME).symlink_metadata().is_err());
     }
 
     #[test]
@@ -351,26 +351,26 @@ mod tests {
         // A link through a relative path still resolves to this binary.
         std::os::unix::fs::symlink(
             "../Scrawl.app/Contents/MacOS/scrawl",
-            home_bin.join("scrawl"),
+            home_bin.join(NAME),
         )
         .unwrap();
         let places = sb.places(&target, &["brew/bin", "local/bin"]);
         assert_eq!(
             state(&places),
             State::Installed {
-                link: home_bin.join("scrawl"),
+                link: home_bin.join(NAME),
                 homebrew: false
             }
         );
-        std::fs::remove_file(home_bin.join("scrawl")).unwrap();
+        std::fs::remove_file(home_bin.join(NAME)).unwrap();
         let bin = sb.0.join("brew/bin");
         std::fs::create_dir_all(&bin).unwrap();
-        std::fs::create_dir_all(sb.0.join("brew/Caskroom/scrawl/0.4.0")).unwrap();
-        std::os::unix::fs::symlink(&target, bin.join("scrawl")).unwrap();
+        std::fs::create_dir_all(sb.0.join("brew/Caskroom/remark/0.4.0")).unwrap();
+        std::os::unix::fs::symlink(&target, bin.join(NAME)).unwrap();
         assert_eq!(
             state(&places),
             State::Installed {
-                link: bin.join("scrawl"),
+                link: bin.join(NAME),
                 homebrew: true
             }
         );

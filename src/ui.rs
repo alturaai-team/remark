@@ -2898,7 +2898,7 @@ impl ScrawlCoordinator {
                     activity.stop_started = Some(stop_started);
                     activity.stop_ms = Some(stop_started.elapsed().as_millis() as u64);
                     let duration_ms = recording.duration_ms;
-                    let agentation = crate::agentation::capture(capture_end_ms.saturating_sub(duration_ms), capture_end_ms);
+                    let browser = crate::browser::capture(capture_end_ms.saturating_sub(duration_ms), capture_end_ms);
                     let mut finalized = crate::finalize_capture_bundle(
                         &bundle_dir,
                         target,
@@ -2908,7 +2908,7 @@ impl ScrawlCoordinator {
                         recorded_audio,
                         None,
                         activity,
-                        agentation,
+                        browser,
                     );
                     if let Ok((dir, bundle, _)) = &mut finalized
                         && let Some(Ok(Some(dest))) = route.map(std::thread::JoinHandle::join)

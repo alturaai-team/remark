@@ -670,8 +670,8 @@ pub fn summary_markdown_with(
     } else if !bundle.transcript.text.trim().is_empty() {
         out.push_str(&format!("“{}”\n", bundle.transcript.text.trim()));
     }
-    if let Some(capture) = &bundle.agentation {
-        out.push_str(&crate::agentation::summary(capture, &bundle.keyframes));
+    if let Some(capture) = &bundle.browser {
+        out.push_str(&crate::browser::summary(capture, &bundle.keyframes));
     }
     out
 }
@@ -1438,7 +1438,7 @@ mod tests {
             cursor: Vec::new(),
             autocrop: None,
             destination: None,
-            agentation: None,
+            browser: None,
         };
         let tl = timeline(&bundle).join("\n");
         assert!(tl.find("0:03 “").unwrap() < tl.find("0:04 · pressed").unwrap());

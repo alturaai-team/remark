@@ -1928,7 +1928,7 @@ mod tests {
             cursor: Vec::new(),
             autocrop: None,
             destination: None,
-            agentation: None,
+            browser: None,
         }
     }
 

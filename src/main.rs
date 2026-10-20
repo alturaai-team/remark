@@ -1,5 +1,5 @@
 mod agent_context;
-mod agentation;
+mod browser;
 mod spokenly;
 mod audio;
 mod autocrop;
@@ -71,7 +71,7 @@ use crate::sketch::{marks_of, summary_markdown};
 
 #[derive(Parser)]
 #[command(
-    name = "scrawl",
+    name = "remark",
     version,
     about = "Shortcut-triggered screen, voice, and drawing capture for agents"
 )]
@@ -153,21 +153,6 @@ fn mic_list() {
     if let Some(note) = pick.note() {
         println!("{note}");
     }
-}
-
-#[derive(Subcommand)]
-enum AgentationCommand {
-    /// Izpiši razpoložljive seje Agentation.
-    Sessions {
-        #[arg(long, default_value_t = 4747)]
-        port: u16,
-    },
-    /// Poveži izrecno izbrano sejo Agentation.
-    Use {
-        session: String,
-        #[arg(long, default_value_t = 4747)]
-        port: u16,
-    },
 }
 
 #[derive(Subcommand)]
@@ -335,11 +320,8 @@ enum Command {
         #[arg(long, default_value_t = 51089)]
         spokenly_port: u16,
     },
-    /// Izberi spletno sejo za strukturirane pripombe.
-    Agentation {
-        #[command(subcommand)]
-        command: AgentationCommand,
-    },
+    /// Pripravi lokalno povezavo za razširitev brskalnika.
+    Browser { directory: PathBuf },
     /// Check the Hex transcriber: is it running, which models are ready, which one Scrawl uses.
     Hex {
         #[command(subcommand)]
@@ -589,7 +571,7 @@ enum Command {
 }
 
 /// `skills/scrawl/SKILL.md`, the same text `bunx skills add kitlangton/scrawl` installs.
-const SKILL: &str = include_str!("../skills/scrawl/SKILL.md");
+const SKILL: &str = include_str!("../skills/remark/SKILL.md");
 
 pub fn now_epoch_ms() -> u64 {
     SystemTime::now()
@@ -754,7 +736,7 @@ pub fn prepare_visuals(
 #[derive(Default)]
 pub struct SourceExtras {
     pub source: Option<String>,
-    pub agentation: Option<agentation::Capture>,
+    pub browser: Option<browser::Capture>,
     pub device: Option<DeviceInfo>,
     /// What the recorded app said about itself: values at the start, their changes, and screens.
     pub context: std::collections::BTreeMap<String, String>,
@@ -844,7 +826,7 @@ pub fn finalize_capture_bundle(
     recorded_audio: Option<RecordedAudio>,
     note: Option<String>,
     activity: windows::ActivityLog,
-    agentation: Option<agentation::Capture>,
+    browser: Option<browser::Capture>,
 ) -> Result<(PathBuf, ScrawlBundle, String)> {
     let started_at = activity
         .stop_started
@@ -863,7 +845,7 @@ pub fn finalize_capture_bundle(
     }
     let wav_path = bundle_dir.join("audio.wav");
     let has_wav = wav_path.exists();
-    let flags = agentation.as_ref().map(agentation::times).into_iter().flatten().collect();
+    let flags = browser.as_ref().map(browser::times).into_iter().flatten().collect();
     let crop_settings = (target.mode == CaptureMode::Display)
         .then(autocrop::Settings::configured)
         .flatten();
@@ -935,7 +917,7 @@ pub fn finalize_capture_bundle(
         video_path.clone(),
         note,
         SourceExtras {
-            agentation,
+            browser,
             flags,
             activity,
             video_offset_ms,
@@ -1054,7 +1036,7 @@ pub fn build_bundle_from_parts(
             video_offset_ms: extras.video_offset_ms,
             audio: audio_rel,
             source: extras.source,
-            agentation: extras.agentation,
+            browser: extras.browser,
             device: extras.device,
             context: extras.context,
             context_changes: extras.context_changes,
@@ -1207,7 +1189,7 @@ pub fn build_bundle_from_parts(
         video_offset_ms: extras.video_offset_ms,
         audio: audio_rel,
         source: extras.source,
-        agentation: extras.agentation,
+        browser: extras.browser,
         device: extras.device,
         context: extras.context,
         context_changes: extras.context_changes,
@@ -1584,7 +1566,7 @@ fn main() -> Result<()> {
                 .map(windows::WindowLogger::stop)
                 .unwrap_or_default();
             let recorded_audio = audio.and_then(|a| a.stop().ok());
-            let agentation = agentation::capture(capture_end_ms.saturating_sub(recording.duration_ms), capture_end_ms);
+            let browser = browser::capture(capture_end_ms.saturating_sub(recording.duration_ms), capture_end_ms);
             let (_dir, _bundle, summary) = finalize_capture_bundle(
                 &bundle_dir,
                 target,
@@ -1594,7 +1576,7 @@ fn main() -> Result<()> {
                 recorded_audio,
                 note,
                 activity,
-                agentation,
+                browser,
             )?;
             print!("{summary}");
             Ok(())
@@ -1782,7 +1764,7 @@ fn main() -> Result<()> {
                             recorded,
                             iter_note,
                             iter_activity,
-                            old.agentation.clone(),
+                            old.browser.clone(),
                         )?;
                         let _ = handoff::copy_bundle_to_clipboard(&iter_out);
                         runs_ms.push(t0.elapsed().as_secs_f64() * 1_000.0);
@@ -1877,7 +1859,7 @@ fn main() -> Result<()> {
                     old.note,
                     SourceExtras {
                         flags,
-                        agentation: old.agentation,
+                        browser: old.browser,
                         activity: windows::ActivityLog {
                             windows: old.windows,
                             cursor: old.cursor,
@@ -1964,13 +1946,7 @@ fn main() -> Result<()> {
             spokenly::connect(spokenly_port)?;
             Ok(())
         }
-        Command::Agentation { command } => match command {
-            AgentationCommand::Sessions { port } => {
-                println!("{}", serde_json::to_string_pretty(&agentation::sessions(port)?)?);
-                Ok(())
-            }
-            AgentationCommand::Use { session, port } => agentation::connect(port, &session),
-        },
+        Command::Browser { directory } => browser::configure_extension(&directory),
         Command::Hex {
             command: HexCommand::Status,
         } => {

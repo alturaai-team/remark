@@ -25,7 +25,7 @@ use crate::routing::{is_loopback_host, parse_url};
 /// How long a registration lasts after its last heartbeat. The script beats every 30 s.
 pub const TTL_MS: u64 = 120_000;
 const MAX_ENTRIES: usize = 64;
-const SDK_JS: &str = include_str!("sdk.js");
+const SDK_JS: &str = concat!(include_str!("../browser/context.js"), "\n", include_str!("sdk.js"));
 
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -341,6 +341,21 @@ pub fn handle(stream: &mut TcpStream, header: &str, expected_token: &str) -> Res
                     None,
                 );
             }
+        }
+        ("POST", "/web/annotations") => {
+            let len: usize = header_value(header, "content-length").and_then(|v| v.parse().ok()).context("Missing annotation length")?;
+            anyhow::ensure!(len <= 64 * 1024, "Annotation too large");
+            let mut bytes = vec![0_u8; len];
+            stream.read_exact(&mut bytes)?;
+            if !peer_loopback || !token_ok {
+                respond_json(stream, "403 Forbidden", &serde_json::json!({"ok":false}), origin);
+                return Ok(true);
+            }
+            let post: crate::page::Post = serde_json::from_slice(&bytes)?;
+            let wanted = crate::handoff::experiment(crate::handoff::AGENT_CONTEXT);
+            let expected = post.events.len();
+            let accepted = if wanted {crate::page::record("remark-browser", post)} else {0};
+            respond_json(stream, "200 OK", &serde_json::json!({"ok":wanted && expected > 0 && accepted == expected}), origin);
         }
         ("POST", "/web/context") => {
             let len: usize = header_value(header, "content-length")

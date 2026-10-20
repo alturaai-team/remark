@@ -87,85 +87,8 @@
       const s = String(text == null ? "" : text).replace(/\s+/g, " ").trim();
       return s ? s.slice(0, max) : undefined;
     };
-    const ignored = /\/node_modules\/|\/\.vite\/deps\/|react-dom|jsx-dev-runtime|jsx-runtime|\/sdk\.js/;
-    // `src/ui/Pill.tsx:142` from the first stack frame in the project's own code.
-    const stackSource = (stack) => {
-      for (const line of String(stack || "").split("\n")) {
-        const m = line.match(/((?:https?|file):\/\/[^\s()]+?):(\d+):\d+\)?\s*$/);
-        if (!m || ignored.test(m[1])) continue;
-        try {
-          const path = decodeURIComponent(new URL(m[1]).pathname).replace(/^\/(@fs\/)?/, "");
-          return path + ":" + m[2];
-        } catch {}
-      }
-      return undefined;
-    };
-    const short = (file, line) => {
-      try {
-        return decodeURIComponent(new URL(file, location.href).pathname).replace(/^\//, "") + (line ? ":" + line : "");
-      } catch {
-        return undefined;
-      }
-    };
-    // Source locators some dev setups add (solid-devtools, react-dev-inspector, Sentry).
-    const located = (el) => {
-      const d = el.dataset || {};
-      if (d.sourceLoc) return { source: d.sourceLoc.replace(/^(.*:\d+):\d+$/, "$1") };
-      if (d.inspectorRelativePath) return { source: d.inspectorRelativePath + (d.inspectorLine ? ":" + d.inspectorLine : "") };
-      if (d.sentrySourceFile) return { component: d.sentryComponent, source: d.sentrySourceFile };
-      return null;
-    };
-    const fiberOf = (el) => {
-      for (const key in el) {
-        if (key.startsWith("__reactFiber$") || key.startsWith("__reactInternalInstance$")) return el[key];
-      }
-      return null;
-    };
-    const reactInfo = (fiber) => {
-      const out = {};
-      const src = fiber._debugSource;
-      if (src && src.fileName) out.source = short(src.fileName, src.lineNumber);
-      else if (fiber._debugStack) out.source = stackSource(fiber._debugStack.stack);
-      for (let f = fiber; f; f = f.return) {
-        const type = f.type;
-        const fn = typeof type === "function" ? type : type && typeof type === "object" ? type.render || type.type : null;
-        const name = fn && (fn.displayName || fn.name);
-        if (name) {
-          out.component = name;
-          break;
-        }
-      }
-      return out;
-    };
-    const component = (el) => {
-      for (let node = el, depth = 0; node && depth < 30; node = node.parentElement, depth++) {
-        const found = located(node);
-        if (found) return found;
-        const fiber = fiberOf(node);
-        if (fiber) return reactInfo(fiber);
-      }
-      return {};
-    };
-    const typed = "input, textarea, select, [contenteditable=''], [contenteditable='true']";
-    const describe = (el) => {
-      if (!(el instanceof Element)) return undefined;
-      el = el.closest("button, a, [role=button], [role=tab], [role=menuitem], [role=link], label, summary") || el;
-      const target = { tag: el.tagName.toLowerCase() };
-      if (el.id) target.id = clip(el.id, 60);
-      const cls = [...el.classList].filter((c) => c.length <= 30 && !/[:[\]/]/.test(c)).slice(0, 2);
-      if (cls.length) target.cls = cls.join(".");
-      const field = el.closest(typed);
-      let text =
-        el.getAttribute("aria-label") || el.getAttribute("title") || el.getAttribute("alt") || el.getAttribute("data-testid");
-      if (!text && field) {
-        if (field.getAttribute("type") !== "password") text = field.getAttribute("placeholder") || field.getAttribute("name");
-      } else if (!text) {
-        text = (el.textContent || "").slice(0, 200);
-      }
-      const label = clip(text, 60);
-      if (label) target.text = label;
-      return Object.assign(target, component(el));
-    };
+    const stackSource = globalThis.RemarkContext.stackSource;
+    const describe = globalThis.RemarkContext.describe;
 
     addEventListener("pointerdown", (e) => push({ kind: "pointer", target: describe(e.target) }), {
       capture: true,

@@ -566,7 +566,7 @@ pub enum Pane {
 }
 
 /// What `bunx skills add` installs: `skills/scrawl/SKILL.md` from this repository.
-pub const SKILL_COMMAND: &str = "bunx skills add kitlangton/scrawl";
+pub const SKILL_COMMAND: &str = "bunx skills add alturaai-team/remark";
 
 #[derive(Clone, Debug, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -614,7 +614,7 @@ impl CommandLineView {
         match state {
             State::Installed { link, homebrew } => {
                 view.path = Some(tilde(link));
-                view.caption = "Agents and your terminal can run scrawl to read captures, zoom \
+                view.caption = "Agents and your terminal can run remark to read captures, zoom \
                                 into a moment and export video."
                     .to_owned();
                 if *homebrew {
@@ -626,7 +626,7 @@ impl CommandLineView {
                     view.button = Some("uninstall");
                     if !usually_on_path(link) {
                         view.caption = format!(
-                            "If your shell can't find scrawl, add {} to your PATH.",
+                            "If your shell can't find remark, add {} to your PATH.",
                             folder(link)
                         );
                     }
@@ -634,7 +634,7 @@ impl CommandLineView {
             }
             State::Missing { link } => {
                 view.caption = format!(
-                    "Links scrawl into {}, so agents and your terminal can run it.",
+                    "Links remark into {}, so agents and your terminal can run it.",
                     folder(link)
                 );
             }
@@ -2271,7 +2271,7 @@ mod tests {
         );
         assert_eq!(
             panel.view(&host).skill_command,
-            "bunx skills add kitlangton/scrawl"
+            "bunx skills add alturaai-team/remark"
         );
 
         let macos = dir.0.join("Scrawl.app/Contents/MacOS");
@@ -2284,13 +2284,13 @@ mod tests {
             (Some("install"), true, None)
         );
         assert!(
-            row.caption.starts_with("Links scrawl into "),
+            row.caption.starts_with("Links remark into "),
             "{}",
             row.caption
         );
 
         panel.on(Action::InstallCli, &mut host);
-        let link = dir.0.join("bin/scrawl");
+        let link = dir.0.join("bin/remark");
         assert_eq!(
             std::fs::read_link(&link).unwrap(),
             host.cli.target.clone().unwrap()

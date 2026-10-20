@@ -144,7 +144,10 @@ mod tests {
             {"text":"Drugi gumb.","start":2.0,"end":3.25}
         ]));
         let result = parse_response(&bytes, 4_000);
-        assert!(result.is_ok(), "a timed Spokenly response must become a transcript");
+        assert!(
+            result.is_ok(),
+            "a timed Spokenly response must become a transcript"
+        );
         let transcript = result.unwrap();
         assert_eq!(transcript.source, "spokenly");
         assert_eq!(transcript.model.as_deref(), Some("parakeetTDT06V2"));
@@ -164,9 +167,15 @@ mod tests {
         // The installed Spokenly returned 3.836 s for a synthetic WAV lasting 3.816 s.
         let bytes = response(json!([{"text":"First button.","start":0.0,"end":3.836}]));
         let result = parse_response(&bytes, 3_816);
-        assert!(result.is_ok(), "Spokenly trailing timestamps must not reject saved audio");
+        assert!(
+            result.is_ok(),
+            "Spokenly trailing timestamps must not reject saved audio"
+        );
         let transcript = result.unwrap();
-        assert_eq!(transcript.segments[0].t1, 3_816, "a model's trailing timestamp cannot extend the recording");
+        assert_eq!(
+            transcript.segments[0].t1, 3_816,
+            "a model's trailing timestamp cannot extend the recording"
+        );
     }
 
     #[test]
