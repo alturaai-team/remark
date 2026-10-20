@@ -2,7 +2,7 @@
 <button id="save:special">Shrani</button><button id="duplicate">Prvi</button><button id="duplicate">Drugi</button>
 <input type="password" value="private-test-value"><div id="shadow-host"></div><pre id="results"></pre>
 <script src="context.js"></script><script>
-try {
+(async()=>{try {
  const checks=[];
  const assert=(ok,name)=>{if(!ok)throw new Error(name);checks.push(name);};
  const special=document.getElementById('save:special');
@@ -23,9 +23,29 @@ try {
  const password=RemarkContext.describe(document.querySelector('input'));
  assert(!JSON.stringify(password).includes('private-test-value'),'password values are excluded');
  assert(!RemarkContext.describe(document.querySelector('button:nth-of-type(2)')).source,'missing source metadata is not invented');
+ const frames=[];
+ for (const id of ['frame-one','frame-two']) {
+   const frame=document.createElement('iframe');frame.id=id;
+   const loaded=new Promise(resolve=>frame.onload=resolve);
+   frame.srcdoc='<script src="context.js"><\/script><button id="same">Same</button>';
+   document.body.append(frame);await loaded;
+   const described=frame.contentWindow.RemarkContext.describe(frame.contentDocument.querySelector('button'));
+   frames.push(described.selection);
+ }
+ assert(frames[0].framePath[0].selectorPath[0]!==frames[1].framePath[0].selectorPath[0],'identical selectors in separate frames retain distinct parent paths');
+ assert(frames.every(frame=>frame.framePath[0].rectViewport[2]>0),'parent frame geometry is retained');
+ const picker=document.createElement('script');picker.src='picker.js';
+ const loaded=new Promise(resolve=>picker.onload=resolve);document.body.append(picker);await loaded;
+ special.dispatchEvent(new PointerEvent('pointerdown',{bubbles:true,composed:true,button:0}));
+ const overlay=document.querySelector('[aria-label="Označi element"]').shadowRoot;
+ assert(overlay.children.length===2,'picker creates one marker');
+ __remarkPicker.toggle();__remarkPicker.toggle();
+ assert(overlay.children.length===1,'new picker session removes old markers');
+ __remarkPicker.toggle();
  document.getElementById('results').textContent=JSON.stringify(checks);
  document.body.dataset.testStatus='passed';
 } catch(error) {
  document.body.dataset.testStatus='failed';document.getElementById('results').textContent=error.message;throw error;
 }
+})();
 </script>
