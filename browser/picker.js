@@ -51,7 +51,7 @@
     enabled = !enabled;
     if (enabled) {
       for (const {marker} of markers.values()) marker.remove();
-      markers.clear();count=0;
+      markers.clear();
     }
     if (!enabled) hover.style.display = "none";
     if (enabled) document.documentElement.style.setProperty("cursor","crosshair");
