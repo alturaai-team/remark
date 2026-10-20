@@ -67,8 +67,10 @@ cat > "${CONTENTS_DIR}/Info.plist" <<PLIST
 </plist>
 PLIST
 
-codesign --force --sign "${IDENTITY}" --identifier "dev.altura.remark.helper" "${MACOS_DIR}/scrawl-helper"
-codesign --force --sign "${IDENTITY}" --identifier "dev.altura.remark" "${APP_DIR}"
+# An identifier-only designated requirement keeps macOS permissions (TCC) across rebuilds;
+# plain ad-hoc signing ties them to the binary hash, so every install asked again.
+codesign --force --sign "${IDENTITY}" --identifier "dev.altura.remark.helper" -r="designated => identifier \"dev.altura.remark.helper\"" "${MACOS_DIR}/scrawl-helper"
+codesign --force --sign "${IDENTITY}" --identifier "dev.altura.remark" -r="designated => identifier \"dev.altura.remark\"" "${APP_DIR}"
 
 BROWSER_DIR="${SCRAWL_BROWSER_DIR:-${HOME}/Library/Application Support/remark/browser}"
 mkdir -p "${BROWSER_DIR}"
