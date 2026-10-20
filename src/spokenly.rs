@@ -158,13 +158,21 @@ mod tests {
     }
 
     #[test]
+    fn spokenly_segment_end_is_clipped_to_the_recorded_audio() {
+        // The installed Spokenly returned 3.836 s for a synthetic WAV lasting 3.816 s.
+        let bytes = response(json!([{"text":"First button.","start":0.0,"end":3.836}]));
+        let transcript = parse_response(&bytes, 3_816).unwrap();
+        assert_eq!(transcript.segments[0].t1, 3_816, "a model's trailing timestamp cannot extend the recording");
+    }
+
+    #[test]
     fn spokenly_rejects_errors_and_invalid_audio_times() {
         for bytes in [
             br#"{"error":{"code":-1,"message":"failed"}}"#.to_vec(),
             br#"{"result":{"isError":true,"content":[{"type":"text","text":"failed"}]}}"#.to_vec(),
             response(json!([{"text":"wrong","start":-1.0,"end":2.0}])),
             response(json!([{"text":"wrong","start":3.0,"end":2.0}])),
-            response(json!([{"text":"wrong","start":0.0,"end":99999.0}])),
+            response(json!([{"text":"wrong","start":5.0,"end":6.0}])),
         ] {
             assert!(parse_response(&bytes, 4_000).is_err());
         }
